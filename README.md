@@ -1,6 +1,8 @@
 # Leaflet.RSWE
 Room Sketches Web Editor (RSWE) Leaflet plugin allows you draw, edit, save and load simple indoor sketches directly on Leaflet maps.
 
+See [demo](http://trash0000.github.io/Leaflet.RSWE/RSWE.600x800.html)
+
 # Important
 Leaflet.RSWE requires [Leaflet 0.7.x](https://github.com/Leaflet/Leaflet/releases).
 
