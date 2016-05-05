@@ -20,7 +20,7 @@ Install Jake.
 The best way is to download sources from [Jake Repository](https://github.com/jakejs/jake) and manually uppack into NodeJS node_modules directory.
 Also copy file jake.bat into the root of NodeJS directory.
 
-Download Leaflet.RSWE sources from [Leaflet.RSWE Repository](http://leaflet.github.com/Leaflet.RSWE/)
+Download Leaflet.RSWE sources from [Leaflet.RSWE Repository](https://github.com/trash0000/Leaflet.RSWE/)
 Unpack sources in Your working dirrectory (e.g. C:\RSWE) and run commands:
 
     npm install -g jake
