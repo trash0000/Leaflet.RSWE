@@ -501,7 +501,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 			this.options.layers[roomId] = {controlLayer: layer, roomWalls: roomWalls};
 		}
 
-		this.options.drawnWallsLayerGrp.addTo(map);
+		this.options.drawnWallsLayerGrp.addTo(this._map);
 	},
 	ChangeWallType: function (roomId, wallId) {
 		if (!this.options.layers[roomId].controlLayer) { return; }
