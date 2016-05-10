@@ -4139,7 +4139,7 @@ L.EditToolbar.Delete = L.Handler.extend({
 		}
 		this._markers = [];
 
-		var ll1, ll2, llDelete, onClick;
+		var ll1, llDelete, onClick;
 
 		this._deletableLayers.eachLayer(function (layer) {
 			if (layer.editing._poly !== undefined) {
@@ -4148,9 +4148,8 @@ L.EditToolbar.Delete = L.Handler.extend({
 				if (latlngs.length < 2) { return; }
 				
 				ll1 = layer.editing._poly._latlngs[0];
-				ll2 = layer.editing._poly._latlngs[1];
 
-				llDelete = new L.LatLng((2 * ll1.lat + ll2.lat) * 0.33, (2 * ll1.lng + ll2.lng) * 0.33);
+				llDelete = new L.LatLng(ll1.lat, ll1.lng);
 
 				var marker = new L.Marker(llDelete, {
 					draggable: false,
