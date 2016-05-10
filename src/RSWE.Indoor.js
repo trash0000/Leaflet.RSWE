@@ -132,7 +132,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		var latLngs = layer._latlngs;
 
 		var pointsCount = latLngs.length,
-			distance = 0,
+			distance = 0, dist = 0,
 			det, detx,
 			coslat1, coslat2,
 			p0, p1, p2, p3,
@@ -207,13 +207,22 @@ L.Control.RSWEIndoor = L.Control.extend({
 				detx = (p31.lng - p21.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p31.lat - p21.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a21 = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p21.lat, (detx / det) * (p2.lng - p1.lng) + p21.lng);
+					distance =  p2.distanceTo(a21);
+					dist =  p2.distanceTo(p21);
+					a21.lat = p2.lat + (a21.lat - p2.lat) * (dist / distance);
+					a21.lng = p2.lng + (a21.lng - p2.lng) * (dist / distance);
 				} else {
 					a21 = new L.LatLng(p21.lat, p21.lng);
 				}
+
 				det = (p2.lng - p1.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p2.lat - p1.lat);
 				detx = (p32.lng - p22.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p32.lat - p22.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a22 = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p22.lat, (detx / det) * (p2.lng - p1.lng) + p22.lng);
+					distance =  p2.distanceTo(a22);
+					dist =  p2.distanceTo(p22);
+					a22.lat = p2.lat + (a22.lat - p2.lat) * (dist / distance);
+					a22.lng = p2.lng + (a22.lng - p2.lng) * (dist / distance);
 				} else {
 					a22 = new L.LatLng(p22.lat, p22.lng);
 				}
@@ -229,6 +238,10 @@ L.Control.RSWEIndoor = L.Control.extend({
 				detx = (p11.lng - p01.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p11.lat - p01.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a11 = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p01.lat, (detx / det) * (p1.lng - p0.lng) + p01.lng);
+					distance =  p1.distanceTo(a11);
+					dist =  p1.distanceTo(p11);
+					a11.lat = p1.lat + (a11.lat - p1.lat) * (dist / distance);
+					a11.lng = p1.lng + (a11.lng - p1.lng) * (dist / distance);
 				} else {
 					a11 = new L.LatLng(p01.lat, p01.lng);
 				}
@@ -236,6 +249,11 @@ L.Control.RSWEIndoor = L.Control.extend({
 				detx = (p12.lng - p02.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p12.lat - p02.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a12 = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p02.lat, (detx / det) * (p1.lng - p0.lng) + p02.lng);
+					distance =  p1.distanceTo(a12);
+					dist =  p1.distanceTo(p12);
+					a12.lat = p1.lat + (a12.lat - p1.lat) * (dist / distance);
+					a12.lng = p1.lng + (a12.lng - p1.lng) * (dist / distance);
+
 				} else {
 					a12 = new L.LatLng(p02.lat, p02.lng);
 				}
@@ -319,28 +337,69 @@ L.Control.RSWEIndoor = L.Control.extend({
 				if (j === n) { this.options.snapOptions.snapLayersArray.push(layer); }
 
 				if (wallType === 'wall') {
-					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+
+//draw one rectangle and four triangles instead of one trapecium
+//to avoid problems for very small angles
+//					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+//					this.options.drawnWallsLayerGrp.addLayer(controlWall);
+//					controlWall.bringToBack();
+//					roomWalls.push(controlWall);
+//					wall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+//					this.options.drawnWallsLayerGrp.addLayer(wall);
+//					wall.bringToBack();
+//					roomWalls.push(wall);
+
+					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToBack();
 					roomWalls.push(controlWall);
 
-					wall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
 				} else if (wallType === 'gap') {
-					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+//					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+//					this.options.drawnWallsLayerGrp.addLayer(controlWall);
+//					controlWall.bringToBack();
+//					roomWalls.push(controlWall);
+//					wall = new L.polygon([a12, g12, g11, a11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+//					this.options.drawnWallsLayerGrp.addLayer(wall);
+//					wall.bringToBack();
+//					roomWalls.push(wall);
+
+					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToBack();
 					roomWalls.push(controlWall);
 
-					wall = new L.polygon([a12, g12, g11, a11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p12, g12, g11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([a22, g22, g21, a21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
@@ -350,13 +409,33 @@ L.Control.RSWEIndoor = L.Control.extend({
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-				} else if (wallType === 'window') {
-					wall = new L.polygon([a11, g11, g12, a12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([a22, g22, g21, a21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+				} else if (wallType === 'window') {
+					wall = new L.polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
@@ -366,24 +445,64 @@ L.Control.RSWEIndoor = L.Control.extend({
 					wall.bringToFront();
 					roomWalls.push(wall);
 
+					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
 					wall = new L.Curve(['M', [g1.lat, g1.lng], 'L', [g2.lat, g2.lng], 'Z'],
 						{color: '#000000', weight: 1, opacity: 0.9, fillOpacity: 0.9});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 
 				} else if (wallType === 'door1') {
-					wall = new L.polygon([a11, g11, g12, a12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([a22, g22, g21, a21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
@@ -400,17 +519,37 @@ L.Control.RSWEIndoor = L.Control.extend({
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 				} else if (wallType === 'door2') {
-					wall = new L.polygon([a11, g11, g12, a12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([a22, g22, g21, a21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
@@ -427,20 +566,41 @@ L.Control.RSWEIndoor = L.Control.extend({
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 				} else if (wallType === 'door3') {
-					wall = new L.polygon([a11, g11, g12, a12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([a22, g22, g21, a21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
 
 					wall = new L.polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
@@ -454,20 +614,41 @@ L.Control.RSWEIndoor = L.Control.extend({
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 				} else if (wallType === 'door4') {
-					wall = new L.polygon([a11, g11, g12, a12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([a22, g22, g21, a21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
 
 					wall = new L.polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
 					this.options.drawnWallsLayerGrp.addLayer(wall);
@@ -481,7 +662,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToFront();
 					roomWalls.push(controlWall);
