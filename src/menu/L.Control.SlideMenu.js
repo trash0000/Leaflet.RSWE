@@ -2,11 +2,9 @@ L.Control.SlideMenu = L.Control.extend({
     options: {
         isOpen: false,
         position: 'topright',
-//now we can set width in percents
         width: '100%',
         height: '40px',
         delay: '0',
-//we don't use Awesome Fonts but leave this styles
         closeButtonIcon: 'fa-angle-double-up',
         menuButtonIcon: 'fa-angle-double-down'
     },
@@ -14,6 +12,7 @@ L.Control.SlideMenu = L.Control.extend({
         '<span class="leaflet-top-menu-spacer">&nbsp;</span>',
         '<a class="leaflet-top-menu-link"><b> Load </b></a>',
         '<a class="leaflet-top-menu-link"><b> Save </b></a>',
+        '<a class="leaflet-top-menu-link"><b> GeoJson </b></a>',
         '<a class="leaflet-top-menu-link"><b> Options </b></a>'
     ],
 
@@ -85,8 +84,14 @@ L.Control.SlideMenu = L.Control.extend({
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[0], 'click', function () { this._map.RSWEIndoor.loadDialog.open(); }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[1], 'click', function () { this._map.RSWEIndoor.saveDialog.open(); }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[2], 'click', function () {
+            this._map.RSWEIndoor.saveJsonDialog.open();
+        }, this);
+        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[3], 'click', function () {
             this._map.RSWEIndoor.optionsDialog.open();
         }, this);
+
+
+//        this._contents.style.clear = 'both';
 
         L.DomEvent.disableClickPropagation(this._menu);
         L.DomEvent

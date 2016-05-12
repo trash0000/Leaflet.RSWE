@@ -416,14 +416,22 @@ L.Curve = L.Path.extend({
 							str += point.y + ' ';
 							break;
 						default:
-							str += point.x + ',' + point.y + ' ';
+							str += point.x + ' ' + point.y + ' ';
 							break;
 					}
 				}
 			}
 		}
 		return str || 'M0 0';
+	},
+
+	toGeoJSON: function () {
+		return L.GeoJSON.getFeature(this, {
+			type: 'Curve',
+			coordinates: this._coords
+		});
 	}
+
 });
 
 L.curve = function (path, options) {
@@ -5820,11 +5828,9 @@ L.Control.SlideMenu = L.Control.extend({
     options: {
         isOpen: false,
         position: 'topright',
-//now we can set width in percents
         width: '100%',
         height: '40px',
         delay: '0',
-//we don't use Awesome Fonts but leave this styles
         closeButtonIcon: 'fa-angle-double-up',
         menuButtonIcon: 'fa-angle-double-down'
     },
@@ -5832,6 +5838,7 @@ L.Control.SlideMenu = L.Control.extend({
         '<span class="leaflet-top-menu-spacer">&nbsp;</span>',
         '<a class="leaflet-top-menu-link"><b> Load </b></a>',
         '<a class="leaflet-top-menu-link"><b> Save </b></a>',
+        '<a class="leaflet-top-menu-link"><b> GeoJson </b></a>',
         '<a class="leaflet-top-menu-link"><b> Options </b></a>'
     ],
 
@@ -5903,8 +5910,14 @@ L.Control.SlideMenu = L.Control.extend({
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[0], 'click', function () { this._map.RSWEIndoor.loadDialog.open(); }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[1], 'click', function () { this._map.RSWEIndoor.saveDialog.open(); }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[2], 'click', function () {
+            this._map.RSWEIndoor.saveJsonDialog.open();
+        }, this);
+        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[3], 'click', function () {
             this._map.RSWEIndoor.optionsDialog.open();
         }, this);
+
+
+//        this._contents.style.clear = 'both';
 
         L.DomEvent.disableClickPropagation(this._menu);
         L.DomEvent
@@ -6708,6 +6721,10 @@ L.Control.RSWEIndoor = L.Control.extend({
 				snapDistance: 6}
 		});
 	},
+	getJsonData: function () {
+		var data = this.options.drawnWallsLayerGrp.toGeoJSON();
+		return JSON.stringify(data);
+	},
 	getData: function () {
 		var data = {
 			roomProps: this.options.roomProps,
@@ -6744,6 +6761,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 			if (layer) {
 
 				layer.addTo(this._map);
+				layer.setStyle({opacity: 0});
 				this.options.controlLayerGrp.addLayer(layer);
 //reinitialize layers as if they were created via drawing toolbar
 				this.RedrawRoom(layer);
@@ -6789,6 +6807,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		map.on('close_all_dialogs', function () {
 			map.RSWEIndoor.loadDialog.close();
 			map.RSWEIndoor.saveDialog.close();
+			map.RSWEIndoor.saveJsonDialog.close();
 			map.RSWEIndoor.optionsDialog.close();
 
 			map.drawControl._toolbars.draw.disable();
@@ -6830,6 +6849,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.on('draw:editstart_after', function () {
 			map.RSWEIndoor.options.controlLayerGrp.eachLayer(function (layer) {
+				layer.setStyle({opacity: 0.6});
+
 				if (layer.editing._poly !== undefined) {
 					if (layer.snapediting === undefined) {
 //delete original editing marker group ang create SnapMarkers group, enabling snap mode
@@ -6858,6 +6879,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.on('draw:editstop', function () {
 			map.RSWEIndoor.options.controlLayerGrp.eachLayer(function (layer) {
+				layer.setStyle({opacity: 0});
+
 				if (layer.editing._poly !== undefined) {
 					if (layer.snapediting !== undefined) {
 						layer.snapediting.disable();
@@ -6885,6 +6908,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		});
 
 		map.on('draw:created', function (e) {
+			e.layer.setStyle({opacity: 0});
 			map.RSWEIndoor.RedrawRoom(e.layer, e.layerType);
 		});
 
@@ -6925,6 +6949,9 @@ L.Map.addInitHook(function () {
 
 		this.RSWEIndoor.saveDialog = new L.Control.Dialog.Save();
 		this.addControl(this.RSWEIndoor.saveDialog);
+
+		this.RSWEIndoor.saveJsonDialog = new L.Control.Dialog.SaveJson();
+		this.addControl(this.RSWEIndoor.saveJsonDialog);
 
 		this.RSWEIndoor.loadDialog = new L.Control.Dialog.Load();
 		this.addControl(this.RSWEIndoor.loadDialog);
@@ -7771,6 +7798,147 @@ L.Control.Dialog.Save = L.Control.Dialog.extend({
 				'<a href="" download="" style="display:none;"></a>',
 				'<label><input type="text" name="saveFileName" placeholder="Enter file name"/></label>',
 				'&nbsp;<input type="button" value="Save drawing to file"/>',
+				'<br><br><i>Your drawing will be saved into system \"Download\" folder.</i>'
+			]).join('');
+
+			this.options.saveALink = elem.firstChild;
+			this.options.InputName = elem.getElementsByTagName('INPUT')[0];
+			this.options.InputButton = elem.getElementsByTagName('INPUT')[1];
+
+			L.DomEvent.addListener(this.options.InputButton, 'click', function () { this.saveAsText(); }, this);
+		}
+	}
+
+});
+
+L.control.dialog.save = function (options) {
+    return new L.Control.Dialog.Save(options);
+};
+
+
+
+L.Control.Dialog.SaveJson = L.Control.Dialog.extend({
+	options: {
+		size: [ 300, 300 ],
+		minSize: [ 100, 100 ],
+		maxSize: [ 350, 350 ],
+		anchor: [ 50, 50 ],
+		position: 'topleft',
+		initOpen: false
+	},
+	_isOpen: false,
+
+	initialize: function () {
+
+		L.setOptions(this, this.options);
+		L.Control.Dialog.prototype.initialize.call(this, this.options);
+	},
+	_getTabCount: function () {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes.length;
+	},
+	_getTab: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i];
+	},
+	_getTabTitle: function (i) {
+		return this._container.firstChild.firstChild.firstChild.getElementsByTagName('UL')[0].childNodes[i];
+	},
+	_getTabContainer: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i].childNodes[0];
+	},
+
+	_selectTab: function (idx) {
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) {
+			var _tab = this._getTab(i);
+			var _tabTitle = this._getTabTitle(i);
+			if (idx !== i) {
+				_tab.setAttribute('class', 'dialog-tab');
+				_tabTitle.setAttribute('class', 'dialog-tab-title');
+			} else {
+				_tab.setAttribute('class', 'dialog-tab selected');
+				_tabTitle.setAttribute('class', 'dialog-tab-title selected-li');
+			}
+		}
+	},
+	onAdd: function (map) {
+//prototupe call
+		this._container = L.Control.Dialog.prototype.onAdd.call(this, map);
+
+		this._map = map;
+		var mapSize = map.getSize();
+
+//init dialog size and position
+		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+
+		this._isOpen = false;
+
+		L.setOptions(this, this.options);
+//init dialog tabs logic
+		var html = this.contents.join('');
+		this.setContent(html);
+		var func =  function (i) {return function () { this._selectTab(i); }; };
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) { L.DomEvent.addListener(this._getTabTitle(i), 'click', func(i), this); }
+
+// create another dialog elements, add listeners, etc.
+		this._dlgCreateControls();
+
+//re-close dialog if initOpen==false to awoid some bugs
+		if (!this.options.initOpen) { this.close(); }
+		else { this.open(); }
+
+		return this._container;
+	},
+
+	close: function () {
+		this._isOpen = false;
+		L.Control.Dialog.prototype.close.call(this);
+	},
+	open: function () {
+		this._map.fire('close_all_dialogs');
+		
+		this._isOpen = true;
+		L.Control.Dialog.prototype.open.call(this);
+	},
+
+	contents: [
+		'<div class="dialog-container">',
+		'<ul class="dialog-tabs-title">',
+		'<li class="dialog-tab-title selected-li">Save Json Data As</li>',
+		'</ul>',
+		'<div class="dialog-tabs">',
+		'<div class="dialog-tab selected"><div class="dialog-tab-content"><h3>Save Json Data As</h3></div></div>',
+		'</div>',
+		'</div>',
+		''
+	],
+	saveAsText: function () {
+		var link = this.options.saveALink;
+
+		var filename = 'RSWE.json';
+		if (this.options.InputName.value) { filename = this.options.InputName.value; }
+
+		link.download = filename;
+
+		var data = this._map.RSWEIndoor.getJsonData();
+		link.href = 'data:text/plain;base64,' + L.Util.base64Encode(data);
+
+		link.click();
+		this.close();
+	},
+
+	_dlgCreateControls: function () {
+		var tab, elem;
+		tab = this._getTabContainer(0);
+		if (tab) {
+			elem = L.DomUtil.create('div', 'save-file-name');
+			tab.appendChild(elem);
+			elem.innerHTML = ([
+				'<a href="" download="" style="display:none;"></a>',
+				'<label><input type="text" name="saveFileName" placeholder="Enter file name"/></label>',
+				'&nbsp;<input type="button" value="Save Json data to file"/>',
 				'<br><br><i>Your drawing will be saved into system \"Download\" folder.</i>'
 			]).join('');
 

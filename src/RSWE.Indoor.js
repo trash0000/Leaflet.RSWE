@@ -725,6 +725,10 @@ L.Control.RSWEIndoor = L.Control.extend({
 				snapDistance: 6}
 		});
 	},
+	getJsonData: function () {
+		var data = this.options.drawnWallsLayerGrp.toGeoJSON();
+		return JSON.stringify(data);
+	},
 	getData: function () {
 		var data = {
 			roomProps: this.options.roomProps,
@@ -761,6 +765,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 			if (layer) {
 
 				layer.addTo(this._map);
+				layer.setStyle({opacity: 0});
 				this.options.controlLayerGrp.addLayer(layer);
 //reinitialize layers as if they were created via drawing toolbar
 				this.RedrawRoom(layer);
@@ -806,6 +811,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		map.on('close_all_dialogs', function () {
 			map.RSWEIndoor.loadDialog.close();
 			map.RSWEIndoor.saveDialog.close();
+			map.RSWEIndoor.saveJsonDialog.close();
 			map.RSWEIndoor.optionsDialog.close();
 
 			map.drawControl._toolbars.draw.disable();
@@ -847,6 +853,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.on('draw:editstart_after', function () {
 			map.RSWEIndoor.options.controlLayerGrp.eachLayer(function (layer) {
+				layer.setStyle({opacity: 0.6});
+
 				if (layer.editing._poly !== undefined) {
 					if (layer.snapediting === undefined) {
 //delete original editing marker group ang create SnapMarkers group, enabling snap mode
@@ -875,6 +883,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.on('draw:editstop', function () {
 			map.RSWEIndoor.options.controlLayerGrp.eachLayer(function (layer) {
+				layer.setStyle({opacity: 0});
+
 				if (layer.editing._poly !== undefined) {
 					if (layer.snapediting !== undefined) {
 						layer.snapediting.disable();
@@ -902,6 +912,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		});
 
 		map.on('draw:created', function (e) {
+			e.layer.setStyle({opacity: 0});
 			map.RSWEIndoor.RedrawRoom(e.layer, e.layerType);
 		});
 
@@ -942,6 +953,9 @@ L.Map.addInitHook(function () {
 
 		this.RSWEIndoor.saveDialog = new L.Control.Dialog.Save();
 		this.addControl(this.RSWEIndoor.saveDialog);
+
+		this.RSWEIndoor.saveJsonDialog = new L.Control.Dialog.SaveJson();
+		this.addControl(this.RSWEIndoor.saveJsonDialog);
 
 		this.RSWEIndoor.loadDialog = new L.Control.Dialog.Load();
 		this.addControl(this.RSWEIndoor.loadDialog);

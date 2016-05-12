@@ -183,14 +183,22 @@ L.Curve = L.Path.extend({
 							str += point.y + ' ';
 							break;
 						default:
-							str += point.x + ',' + point.y + ' ';
+							str += point.x + ' ' + point.y + ' ';
 							break;
 					}
 				}
 			}
 		}
 		return str || 'M0 0';
+	},
+
+	toGeoJSON: function () {
+		return L.GeoJSON.getFeature(this, {
+			type: 'Curve',
+			coordinates: this._coords
+		});
 	}
+
 });
 
 L.curve = function (path, options) {

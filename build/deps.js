@@ -165,6 +165,7 @@ var deps = {
 			'dialog/Leaflet.Dialog.js',
 			'dialog/Leaflet.Dialog.Options.js',
 			'dialog/Leaflet.Dialog.Save.js',
+			'dialog/Leaflet.Dialog.SaveJson.js',
 			'dialog/Leaflet.Dialog.Load.js'
 		],
 		desc: 'Leaflet.Dialog plugin - Adds Custom Dialogs functionality',
