@@ -190,14 +190,14 @@ L.Curve = L.Path.extend({
 			}
 		}
 		return str || 'M0 0';
-	},
-
-	toGeoJSON: function () {
-		return L.GeoJSON.getFeature(this, {
-			type: 'Curve',
-			coordinates: this._coords
-		});
 	}
+
+//	toGeoJSON: function () {
+//		return L.GeoJSON.getFeature(this, {
+//			type: 'Curve',
+//			coordinates: this._coords
+//		});
+//	}
 
 });
 

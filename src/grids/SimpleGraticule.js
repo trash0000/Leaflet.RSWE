@@ -10,7 +10,6 @@ L.SimpleGraticule = L.LayerGroup.extend({
         redraw: 'move',
         hidden: false,
         zoomIntervals: [
-//using fixed grid intervals (in meters) mapped to zoom level
             {start: 0, end: 3, interval: 5000000},
             {start: 4, end: 5, interval: 500000},
             {start: 6, end: 7, interval: 200000},
@@ -128,6 +127,8 @@ L.SimpleGraticule = L.LayerGroup.extend({
         return {
             x: Math.round((this._bounds.getWest() - Math.round(this._bounds.getWest())) / (sx)) * (sx) + Math.round(this._bounds.getWest()),
             y: Math.round(this._bounds.getSouth() / (sy)) * (sy)
+//            x: Math.floor((this._bounds.getWest() - Math.floor(this._bounds.getWest())) / (sx)) * (sx) + Math.floor(this._bounds.getWest()),
+//            y: Math.floor(this._bounds.getSouth() / (sy)) * (sy)
         };
     },
 

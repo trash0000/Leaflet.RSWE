@@ -12,7 +12,9 @@ L.Control.SlideMenu = L.Control.extend({
         '<span class="leaflet-top-menu-spacer">&nbsp;</span>',
         '<a class="leaflet-top-menu-link"><b> Load </b></a>',
         '<a class="leaflet-top-menu-link"><b> Save </b></a>',
-        '<a class="leaflet-top-menu-link"><b> GeoJson </b></a>',
+        '<a class="leaflet-top-menu-link"><b> SVG </b></a>',
+        '<a class="leaflet-top-menu-link"><b> PNG </b></a>',
+        '<a class="leaflet-top-menu-link"><b> JPG </b></a>',
         '<a class="leaflet-top-menu-link"><b> Options </b></a>'
     ],
 
@@ -81,13 +83,23 @@ L.Control.SlideMenu = L.Control.extend({
         this._contents = L.DomUtil.create('div', 'leaflet-menu-contents', this._menu);
         this._contents.innerHTML = this._innerHTML;
 
-        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[0], 'click', function () { this._map.RSWEIndoor.loadDialog.open(); }, this);
-        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[1], 'click', function () { this._map.RSWEIndoor.saveDialog.open(); }, this);
+        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[0], 'click', function () {
+            this._map.RSWEIndoor.options.dialogs.loadDialog.open();
+        }, this);
+        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[1], 'click', function () {
+            this._map.RSWEIndoor.options.dialogs.saveDialog.open();
+        }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[2], 'click', function () {
-            this._map.RSWEIndoor.saveJsonDialog.open();
+            this._map.RSWEIndoor.options.dialogs.saveSVGDialog.open();
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[3], 'click', function () {
-            this._map.RSWEIndoor.optionsDialog.open();
+            this._map.RSWEIndoor.options.dialogs.savePNGDialog.open();
+        }, this);
+        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[4], 'click', function () {
+            this._map.RSWEIndoor.options.dialogs.saveJPGDialog.open();
+        }, this);
+        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[5], 'click', function () {
+            this._map.RSWEIndoor.options.dialogs.optionsDialog.open();
         }, this);
 
 

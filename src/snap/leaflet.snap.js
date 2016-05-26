@@ -1,3 +1,5 @@
+//(function () {
+
 L.Handler.MarkerSnap = L.Handler.extend({
     options: {
         snapType: 'undefined',
@@ -86,6 +88,8 @@ L.Handler.MarkerSnap = L.Handler.extend({
         return this._guides;
     },
     _snapMarker: function (e) {
+//        console.log({_this: this, e: e});
+
         var marker = e.target,
             latlng = marker.getLatLng(),
             snaplist = [],
@@ -126,7 +130,7 @@ L.Handler.MarkerSnap = L.Handler.extend({
 
 /* jshint ignore:start */
 //when editing layers we don't snap layers to itself
-//so we process only layers that are not parent for this marker
+//so we process only guides except ones which are parent layers for this marker
 
                 if (guide.snapediting !== undefined ) {
                     if (marker._leaflet_id in guide.snapediting._markerGroup._layers) {
@@ -301,3 +305,5 @@ L.Draw.Feature.SnapMixin = {
 
 L.Draw.Feature.include(L.Draw.Feature.SnapMixin);
 L.Draw.Feature.addInitHook('_snapInitialize');
+
+//})();

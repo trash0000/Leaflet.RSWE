@@ -18,7 +18,6 @@ L.SnapGrid = L.LayerGroup.extend({
         opacity: 0.3,
         weight: 1,
         clickable: false,
-//we use dash style, but it's not works for Android browser
         dashArray: '8,2'
     },
 
@@ -58,10 +57,21 @@ L.SnapGrid = L.LayerGroup.extend({
         this.clearLayers();
 
         if (!this.options.hidden) {
-//display Snap Grid only when total grid lines count less then 600 cells by perimetr
-//otherwise don't display snap grid 
+
+//don't change interval. always use fixed from current settings
+
+//            var currentZoom = this._map.getZoom();
+//            for (var i = 0 ; i < this.options.zoomIntervals.length ; i++) {
+//                if (currentZoom >= this.options.zoomIntervals[i].start && currentZoom <= this.options.zoomIntervals[i].end) {
+//                    this.options.interval = this.options.zoomIntervals[i].interval;
+//                    break;
+//                }
+//            }
+
             var getLineCounts = this.getLineCounts();
             if ((getLineCounts.x + getLineCounts.y) < 300) {
+//display Snap Grid only when total grid lines count less then 300
+//otherwise do nothing 
                 this.constructLines(this.getMins(), this.getLineCounts());
             }
             if (this.options.showOriginLabel) { this.addLayer(this.addOriginLabel()); }
@@ -97,6 +107,8 @@ L.SnapGrid = L.LayerGroup.extend({
         return {
             x: Math.round((this._bounds.getWest() - Math.round(this._bounds.getWest())) / (sx)) * (sx) + Math.round(this._bounds.getWest()),
             y: Math.round(this._bounds.getSouth() / (sy)) * (sy)
+//            x: Math.floor((this._bounds.getWest() - Math.floor(this._bounds.getWest())) / (sx)) * (sx) + Math.floor(this._bounds.getWest()),
+//            y: Math.floor(this._bounds.getSouth() / (sy)) * (sy)
         };
     },
 

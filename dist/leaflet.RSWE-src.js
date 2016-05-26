@@ -1,9 +1,9 @@
 /*
 	Leaflet.RSWE, Room Sketches Web Editor, a plugin that adds ability to draw and edit rooms and indoo sketches to Leaflet powered maps.
 	(c) 2016, Alexey Soloviev
-	https://github.com/trash0000/Leaflet.RSWE
+	https://github.com/Leaflet/Leaflet.RSWE
 	http://leafletjs.com
-	https://github.com/trash0000
+	https://github.com/syas
 */
 (function (window, document, undefined) {(function () {
 
@@ -423,14 +423,14 @@ L.Curve = L.Path.extend({
 			}
 		}
 		return str || 'M0 0';
-	},
-
-	toGeoJSON: function () {
-		return L.GeoJSON.getFeature(this, {
-			type: 'Curve',
-			coordinates: this._coords
-		});
 	}
+
+//	toGeoJSON: function () {
+//		return L.GeoJSON.getFeature(this, {
+//			type: 'Curve',
+//			coordinates: this._coords
+//		});
+//	}
 
 });
 
@@ -465,6 +465,8 @@ L.drawLocal = {
 				wall: 'Draw a wall',
 				window: 'Draw a window',
 				door: 'Draw a door'
+
+
 			}
 		},
 		handlers: {
@@ -4182,6 +4184,8 @@ L.EditToolbar.Delete = L.Handler.extend({
 });
 
 
+//(function () {
+
 L.Handler.MarkerSnap = L.Handler.extend({
     options: {
         snapType: 'undefined',
@@ -4270,6 +4274,8 @@ L.Handler.MarkerSnap = L.Handler.extend({
         return this._guides;
     },
     _snapMarker: function (e) {
+//        console.log({_this: this, e: e});
+
         var marker = e.target,
             latlng = marker.getLatLng(),
             snaplist = [],
@@ -4310,7 +4316,7 @@ L.Handler.MarkerSnap = L.Handler.extend({
 
 /* jshint ignore:start */
 //when editing layers we don't snap layers to itself
-//so we process only layers that are not parent for this marker
+//so we process only guides except ones which are parent layers for this marker
 
                 if (guide.snapediting !== undefined ) {
                     if (marker._leaflet_id in guide.snapediting._markerGroup._layers) {
@@ -4486,6 +4492,8 @@ L.Draw.Feature.SnapMixin = {
 L.Draw.Feature.include(L.Draw.Feature.SnapMixin);
 L.Draw.Feature.addInitHook('_snapInitialize');
 
+//})();
+
 
 L.Control.GraphicScale = L.Control.extend({
     options: {
@@ -4553,6 +4561,19 @@ L.Control.GraphicScale = L.Control.extend({
         return scale;
     },
 
+/*
+    hide: function () {
+//        this.options.hidden = true;
+        this.options.graphicScaleControl.style.display = 'none';
+        this.redraw();
+    },
+
+    show: function () {
+//        this.options.hidden = false;
+        this.options.graphicScaleControl.style.display = 'block';
+        this.redraw();
+    },
+*/
     _setStyle: function (options) {
         var classNames = ['leaflet-control-graphicscale-inner'];
         if (options.fill && options.fill !== 'nofill') {
@@ -4640,6 +4661,10 @@ L.Control.GraphicScale = L.Control.extend({
             //length of an half world arc at current lat
             halfWorldMeters = 6378137 * Math.PI * Math.cos(centerLat * Math.PI / 180),
 
+//            halfWorldMeters = 6378137 *1.12* Math.PI * Math.cos(centerLat * Math.PI / 180),
+
+//            halfWorldMeters = 6378137 *1.37* Math.PI * Math.cos(centerLat * Math.PI / 180),
+
             //length of this arc from map left to map right
             dist = halfWorldMeters * (bounds.getNorthEast().lng - bounds.getSouthWest().lng) / 180,
             size = this._map.getSize();
@@ -4652,9 +4677,12 @@ L.Control.GraphicScale = L.Control.extend({
     },
 
     _updateScale: function (maxMeters, options) {
+
         var scale = this._getBestScale(maxMeters, options.minUnitWidth, options.maxUnitsWidth);
 
+        // this._render(scale.unit.unitPx, scale.numUnits, scale.unit.unitMeters);
         this._render(scale);
+
     },
 
     _getBestScale: function (maxMeters, minUnitWidthPx, maxUnitsWidthPx) {
@@ -4882,7 +4910,6 @@ L.SimpleGraticule = L.LayerGroup.extend({
         redraw: 'move',
         hidden: false,
         zoomIntervals: [
-//using fixed grid intervals (in meters) mapped to zoom level
             {start: 0, end: 3, interval: 5000000},
             {start: 4, end: 5, interval: 500000},
             {start: 6, end: 7, interval: 200000},
@@ -5000,6 +5027,8 @@ L.SimpleGraticule = L.LayerGroup.extend({
         return {
             x: Math.round((this._bounds.getWest() - Math.round(this._bounds.getWest())) / (sx)) * (sx) + Math.round(this._bounds.getWest()),
             y: Math.round(this._bounds.getSouth() / (sy)) * (sy)
+//            x: Math.floor((this._bounds.getWest() - Math.floor(this._bounds.getWest())) / (sx)) * (sx) + Math.floor(this._bounds.getWest()),
+//            y: Math.floor(this._bounds.getSouth() / (sy)) * (sy)
         };
     },
 
@@ -5108,7 +5137,6 @@ L.SnapGrid = L.LayerGroup.extend({
         opacity: 0.3,
         weight: 1,
         clickable: false,
-//we use dash style, but it's not works for Android browser
         dashArray: '8,2'
     },
 
@@ -5148,10 +5176,21 @@ L.SnapGrid = L.LayerGroup.extend({
         this.clearLayers();
 
         if (!this.options.hidden) {
-//display Snap Grid only when total grid lines count less then 600 cells by perimetr
-//otherwise don't display snap grid 
+
+//don't change interval. always use fixed from current settings
+
+//            var currentZoom = this._map.getZoom();
+//            for (var i = 0 ; i < this.options.zoomIntervals.length ; i++) {
+//                if (currentZoom >= this.options.zoomIntervals[i].start && currentZoom <= this.options.zoomIntervals[i].end) {
+//                    this.options.interval = this.options.zoomIntervals[i].interval;
+//                    break;
+//                }
+//            }
+
             var getLineCounts = this.getLineCounts();
             if ((getLineCounts.x + getLineCounts.y) < 300) {
+//display Snap Grid only when total grid lines count less then 300
+//otherwise do nothing 
                 this.constructLines(this.getMins(), this.getLineCounts());
             }
             if (this.options.showOriginLabel) { this.addLayer(this.addOriginLabel()); }
@@ -5187,6 +5226,8 @@ L.SnapGrid = L.LayerGroup.extend({
         return {
             x: Math.round((this._bounds.getWest() - Math.round(this._bounds.getWest())) / (sx)) * (sx) + Math.round(this._bounds.getWest()),
             y: Math.round(this._bounds.getSouth() / (sy)) * (sy)
+//            x: Math.floor((this._bounds.getWest() - Math.floor(this._bounds.getWest())) / (sx)) * (sx) + Math.floor(this._bounds.getWest()),
+//            y: Math.floor(this._bounds.getSouth() / (sy)) * (sy)
         };
     },
 
@@ -5838,7 +5879,9 @@ L.Control.SlideMenu = L.Control.extend({
         '<span class="leaflet-top-menu-spacer">&nbsp;</span>',
         '<a class="leaflet-top-menu-link"><b> Load </b></a>',
         '<a class="leaflet-top-menu-link"><b> Save </b></a>',
-        '<a class="leaflet-top-menu-link"><b> GeoJson </b></a>',
+        '<a class="leaflet-top-menu-link"><b> SVG </b></a>',
+        '<a class="leaflet-top-menu-link"><b> PNG </b></a>',
+        '<a class="leaflet-top-menu-link"><b> JPG </b></a>',
         '<a class="leaflet-top-menu-link"><b> Options </b></a>'
     ],
 
@@ -5907,13 +5950,23 @@ L.Control.SlideMenu = L.Control.extend({
         this._contents = L.DomUtil.create('div', 'leaflet-menu-contents', this._menu);
         this._contents.innerHTML = this._innerHTML;
 
-        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[0], 'click', function () { this._map.RSWEIndoor.loadDialog.open(); }, this);
-        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[1], 'click', function () { this._map.RSWEIndoor.saveDialog.open(); }, this);
+        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[0], 'click', function () {
+            this._map.RSWEIndoor.options.dialogs.loadDialog.open();
+        }, this);
+        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[1], 'click', function () {
+            this._map.RSWEIndoor.options.dialogs.saveDialog.open();
+        }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[2], 'click', function () {
-            this._map.RSWEIndoor.saveJsonDialog.open();
+            this._map.RSWEIndoor.options.dialogs.saveSVGDialog.open();
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[3], 'click', function () {
-            this._map.RSWEIndoor.optionsDialog.open();
+            this._map.RSWEIndoor.options.dialogs.savePNGDialog.open();
+        }, this);
+        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[4], 'click', function () {
+            this._map.RSWEIndoor.options.dialogs.saveJPGDialog.open();
+        }, this);
+        L.DomEvent.addListener(this._contents.getElementsByTagName('A')[5], 'click', function () {
+            this._map.RSWEIndoor.options.dialogs.optionsDialog.open();
         }, this);
 
 
@@ -6009,6 +6062,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		drawnWallsLayerGrp: {},
 		fitBondsAfterLoad: true,
 		wallWidth: 0.1,
+		pixelsPerMeter: 100,
 		snapOptions: {
 			displaySnapGrid: true,
 			gridStep: 0.1,
@@ -6018,8 +6072,15 @@ L.Control.RSWEIndoor = L.Control.extend({
 			snapWallsToObjects: false,
 			snapWindowsToObjects: true,
 			snapDoorsToObjects: true,
-
 			snapLayersArray: []
+		},
+		dialogs: {
+			optionsDialog: function () { return new L.Control.Dialog.Options(); },
+			saveDialog: function () { return new L.Control.Dialog.Save(); },
+			loadDialog: function () { return new L.Control.Dialog.Load(); },
+			saveSVGDialog: function () { return new L.Control.Dialog.SaveSVG(); },
+			savePNGDialog: function () { return new L.Control.Dialog.SavePNG(); },
+			saveJPGDialog: function () { return new L.Control.Dialog.SaveJPG(); }
 		}
 	},
 
@@ -6127,6 +6188,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		var latLngs = layer._latlngs;
 
+		var SQRT_2 = Math.sqrt(2);
 		var pointsCount = latLngs.length,
 			distance = 0, dist = 0,
 			det, detx,
@@ -6205,8 +6267,10 @@ L.Control.RSWEIndoor = L.Control.extend({
 					a21 = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p21.lat, (detx / det) * (p2.lng - p1.lng) + p21.lng);
 					distance =  p2.distanceTo(a21);
 					dist =  p2.distanceTo(p21);
-					a21.lat = p2.lat + (a21.lat - p2.lat) * (dist / distance);
-					a21.lng = p2.lng + (a21.lng - p2.lng) * (dist / distance);
+					if (distance > dist * SQRT_2) {
+						a21.lat = p2.lat + SQRT_2 * (a21.lat - p2.lat) * (dist / distance);
+						a21.lng = p2.lng + SQRT_2 * (a21.lng - p2.lng) * (dist / distance);
+					}
 				} else {
 					a21 = new L.LatLng(p21.lat, p21.lng);
 				}
@@ -6217,8 +6281,10 @@ L.Control.RSWEIndoor = L.Control.extend({
 					a22 = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p22.lat, (detx / det) * (p2.lng - p1.lng) + p22.lng);
 					distance =  p2.distanceTo(a22);
 					dist =  p2.distanceTo(p22);
-					a22.lat = p2.lat + (a22.lat - p2.lat) * (dist / distance);
-					a22.lng = p2.lng + (a22.lng - p2.lng) * (dist / distance);
+					if (distance > dist * SQRT_2) {
+						a22.lat = p2.lat + SQRT_2 * (a22.lat - p2.lat) * (dist / distance);
+						a22.lng = p2.lng + SQRT_2 * (a22.lng - p2.lng) * (dist / distance);
+					}
 				} else {
 					a22 = new L.LatLng(p22.lat, p22.lng);
 				}
@@ -6236,8 +6302,10 @@ L.Control.RSWEIndoor = L.Control.extend({
 					a11 = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p01.lat, (detx / det) * (p1.lng - p0.lng) + p01.lng);
 					distance =  p1.distanceTo(a11);
 					dist =  p1.distanceTo(p11);
-					a11.lat = p1.lat + (a11.lat - p1.lat) * (dist / distance);
-					a11.lng = p1.lng + (a11.lng - p1.lng) * (dist / distance);
+					if (distance > dist * SQRT_2) {
+						a11.lat = p1.lat + SQRT_2 * (a11.lat - p1.lat) * (dist / distance);
+						a11.lng = p1.lng + SQRT_2 * (a11.lng - p1.lng) * (dist / distance);
+					}
 				} else {
 					a11 = new L.LatLng(p01.lat, p01.lng);
 				}
@@ -6247,9 +6315,10 @@ L.Control.RSWEIndoor = L.Control.extend({
 					a12 = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p02.lat, (detx / det) * (p1.lng - p0.lng) + p02.lng);
 					distance =  p1.distanceTo(a12);
 					dist =  p1.distanceTo(p12);
-					a12.lat = p1.lat + (a12.lat - p1.lat) * (dist / distance);
-					a12.lng = p1.lng + (a12.lng - p1.lng) * (dist / distance);
-
+					if (distance > dist * SQRT_2) {
+						a12.lat = p1.lat + SQRT_2 * (a12.lat - p1.lat) * (dist / distance);
+						a12.lng = p1.lng + SQRT_2 * (a12.lng - p1.lng) * (dist / distance);
+					}
 				} else {
 					a12 = new L.LatLng(p02.lat, p02.lng);
 				}
@@ -6283,7 +6352,6 @@ L.Control.RSWEIndoor = L.Control.extend({
 					if (layerType === 'wall') { roomWallsProps[wallId].wallType = 'wall'; }
 					if (layerType === 'window') { roomWallsProps[wallId].wallType = 'window'; }
 					if (layerType === 'door') { roomWallsProps[wallId].wallType = 'door1'; }
-
 				}
 
 //				gapStart = roomWallsProps[wallId].gapStart;
@@ -6345,35 +6413,41 @@ L.Control.RSWEIndoor = L.Control.extend({
 //					wall.bringToBack();
 //					roomWalls.push(wall);
 
-					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					wall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-					controlWall.bringToBack();
+					controlWall.bringToFront();
 					roomWalls.push(controlWall);
-
-					wall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
 
 				} else if (wallType === 'gap') {
 //					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
@@ -6385,280 +6459,340 @@ L.Control.RSWEIndoor = L.Control.extend({
 //					wall.bringToBack();
 //					roomWalls.push(wall);
 
-					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+
+					wall = new L.Polygon([p12, g12, g11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'wall';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-					controlWall.bringToBack();
+					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 
-					wall = new L.polygon([p12, g12, g11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
 				} else if (wallType === 'window') {
-					wall = new L.polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([g11, g12, g22, g21], {color: '#ffffff', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'window';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'window';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'window';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'window';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					wall.bringToBack();
+					roomWalls.push(wall);
+
+					wall = new L.Polygon([g11, g12, g22, g21], {fillColor: '#ffffff', color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Curve(['M', [g11.lat, g11.lng], 'L', [g21.lat, g21.lng] ],
+						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
+					wall.bringToFront();
 					roomWalls.push(wall);
-
-					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Curve(['M', [g12.lat, g12.lng], 'L', [g22.lat, g22.lng] ],
+						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
+					wall.bringToFront();
 					roomWalls.push(wall);
-
-					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
-					roomWalls.push(wall);
-
-					wall = new L.Curve(['M', [g1.lat, g1.lng], 'L', [g2.lat, g2.lng], 'Z'],
-						{color: '#000000', weight: 1, opacity: 0.9, fillOpacity: 0.9});
+					wall = new L.Curve(['M', [g1.lat, g1.lng], 'L', [g2.lat, g2.lng] ],
+						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 
 				} else if (wallType === 'door1') {
-					wall = new L.polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					wall = new L.Curve(['M', [g1.lat, g1.lng], 'L', [d01.lat, d01.lng], 'Q', [d21.lat, d21.lng], [g2.lat, g2.lng], 'Z'],
+					wall = new L.Curve(['M', [g1.lat, g1.lng], 'L', [d01.lat, d01.lng], 'Q', [d21.lat, d21.lng], [g2.lat, g2.lng]],
 						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 				} else if (wallType === 'door2') {
-					wall = new L.polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					wall = new L.Curve(['M', [g1.lat, g1.lng], 'L', [d02.lat, d02.lng], 'Q', [d22.lat, d22.lng], [g2.lat, g2.lng], 'Z'],
+					wall = new L.Curve(['M', [g1.lat, g1.lng], 'L', [d02.lat, d02.lng], 'Q', [d22.lat, d22.lng], [g2.lat, g2.lng]],
 						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 				} else if (wallType === 'door3') {
-					wall = new L.polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-
-					wall = new L.polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					wall = new L.Curve(['M', [g2.lat, g2.lng], 'L', [d01.lat, d01.lng], 'Q', [d11.lat, d11.lng], [g1.lat, g1.lng], 'Z'],
-						{color: '#000000', weight: 1, opacity: 0.9, fillOpacity: 0.9});
-
+					wall = new L.Curve(['M', [g2.lat, g2.lng], 'L', [d01.lat, d01.lng], 'Q', [d11.lat, d11.lng], [g1.lat, g1.lng]],
+						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
+					controlWall.options.layerType = 'control';
 					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 				} else if (wallType === 'door4') {
-					wall = new L.polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-					wall = new L.polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToBack();
 					roomWalls.push(wall);
 
-
-					wall = new L.polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					wall = new L.Curve(['M', [g2.lat, g2.lng], 'L', [d02.lat, d02.lng], 'Q', [d12.lat, d12.lng], [g1.lat, g1.lng], 'Z'],
-						{color: '#000000', weight: 1, opacity: 0.9, fillOpacity: 0.9});
-
+					wall = new L.Curve(['M', [g2.lat, g2.lng], 'L', [d02.lat, d02.lng], 'Q', [d12.lat, d12.lng], [g1.lat, g1.lng]],
+						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					wall.bringToFront();
 					roomWalls.push(wall);
 
-					controlWall = new L.polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.bringToFront();
 					roomWalls.push(controlWall);
@@ -6721,9 +6855,150 @@ L.Control.RSWEIndoor = L.Control.extend({
 				snapDistance: 6}
 		});
 	},
-	getJsonData: function () {
-		var data = this.options.drawnWallsLayerGrp.toGeoJSON();
-		return JSON.stringify(data);
+//	getJsonData: function () {
+//		var data = this.options.drawnWallsLayerGrp.toGeoJSON();
+//		return JSON.stringify(data);
+//		return this.getSVGData();
+//	},
+	getPNGData: function (callback) {
+		var img = new Image();
+		var svgStr = L.Util.base64Encode(this.getSVGData());
+		img.w = this.getSVGSize().x + 1;
+		img.h = this.getSVGSize().y + 1;
+
+		img.onload = function () {
+			var canvas = document.createElement('canvas');
+			canvas.width = img.w;
+			canvas.height = img.h;
+
+			var ctx = canvas.getContext('2d');
+
+			ctx.beginPath();
+			ctx.rect(0, 0, img.w, img.h);
+			ctx.fillStyle = 'white';
+			ctx.fill();
+
+			ctx.drawImage(img, 0, 0);
+			var data = canvas.toDataURL('image/png');
+
+			canvas = null;
+			return callback(data.replace(/^data:image\/(png|jpg|jpeg);base64,/, ''));
+		};
+		img.src = 'data:image/svg+xml;base64,' + svgStr;
+	},
+	getJPGData: function (callback) {
+		var img = new Image();
+		var svgStr = L.Util.base64Encode(this.getSVGData());
+		img.w = this.getSVGSize().x + 1;
+		img.h = this.getSVGSize().y + 1;
+
+		img.onload = function () {
+			var canvas = document.createElement('canvas');
+			canvas.width = img.w;
+			canvas.height = img.h;
+
+			var ctx = canvas.getContext('2d');
+
+			ctx.beginPath();
+			ctx.rect(0, 0, img.w, img.h);
+			ctx.fillStyle = 'white';
+			ctx.fill();
+
+			ctx.drawImage(img, 0, 0);
+			var data = canvas.toDataURL('image/jpeg', 1.0);
+
+			canvas = null;
+			return callback(data.replace(/^data:image\/(png|jpg|jpeg);base64,/, ''));
+		};
+		img.src = 'data:image/svg+xml;base64,' + svgStr;
+	},
+	getSVGSize: function () {
+		var bds = this.options.drawnWallsLayerGrp.getBounds();
+
+		var coslat = Math.cos(bds.getCenter().lat * Math.PI / 180);
+		var halfWorldMeters = 6378137 * Math.PI;
+
+		var s = 1.0 / this.options.pixelsPerMeter;
+		var sx = s * 180 / (halfWorldMeters * coslat);
+		var sy = s * 180 / halfWorldMeters;
+
+		return {'x': Math.round((bds.getEast() - bds.getWest()) / (sx)), 'y': Math.round((-bds.getSouth() + bds.getNorth()) / (sy))};
+	},
+
+	getSVGData: function () {
+		var bds = this.options.drawnWallsLayerGrp.getBounds();
+
+		var coslat = Math.cos(bds.getCenter().lat * Math.PI / 180);
+		var halfWorldMeters = 6378137 * Math.PI;
+
+		var s = 1.0 / this.options.pixelsPerMeter;
+		var sx = s * 180 / (halfWorldMeters * coslat);
+		var sy = s * 180 / halfWorldMeters;
+
+		var lngToPixelX = function (lng) { return Math.round((lng - bds.getWest()) / (sx)); };
+		var latToPixelY = function (lat) { return Math.round((-lat + bds.getNorth()) / (sy)); };
+
+		var outSVG = '';
+		outSVG += '<svg width="' + (lngToPixelX(bds.getEast()) + 1) +
+			 '" height="' + (latToPixelY(bds.getSouth()) + 1) +
+			 '" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">\r\n';
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+			var p;
+			var d = '', d1 = '';
+			if (layer.options.opacity === 0) { return; }
+			if (layer.options.layerType === 'control') { return; }
+			var outLayer = '<g><path ';
+
+			for (var key in layer._path.attributes) {
+				if (layer._path.attributes.hasOwnProperty(key)) {
+					var name = layer._path.attributes[key].name;
+					var value = layer._path.attributes[key].value;
+					if ((name === 'fill') && (layer instanceof L.Polygon) && layer.options.layerType === 'door') { value = '#ffffff'; }
+					if ((name === 'stroke-opacity') && (layer instanceof L.Polygon)) { value = '0'; }
+					if (name !== 'class' && name !== 'd') { outLayer += ' ' + name + '="' + value + '"'; }
+				}
+			}
+//set d attrribute
+			if (layer instanceof L.Polygon) {
+//we fill two overlapped poligons translated to 1 pixel cause preventing rasterization effects
+				for (var j = 0, len2 = layer._latlngs.length; j < len2; j++) {
+					p = layer._latlngs[j];
+					d += (j ? ' L' : 'M') + lngToPixelX(p.lng) + ' ' + latToPixelY(p.lat);
+					d1 += (j ? ' L' : 'M') + (lngToPixelX(p.lng) + 1) + ' ' + (latToPixelY(p.lat) + 1);
+				}
+				d += ' Z';
+				d1 += ' Z';
+				outSVG += outLayer + ' d="' + d + '"' + '/></g>\r\n';
+				outSVG += outLayer + ' d="' + d1 + '"' + '/></g>\r\n';
+			}
+			if (layer instanceof L.Curve) {
+				var curCommand;
+				for (var i = 0; i < layer._coords.length; i++) {
+					p = layer._coords[i];
+					if (typeof p === 'string' || p instanceof String) {
+						curCommand = p;
+						d += ' ' + curCommand;
+					} else {
+						switch (curCommand) {
+							case 'H':
+								d += '' + latToPixelY(p[0]) + '.5 ';
+								break;
+							case 'V':
+								d += lngToPixelX(p[1]) + '.5 ';
+								break;
+							default:
+								d += lngToPixelX(p[1]) + '.5 ' + latToPixelY(p[0]) + '.5 ';
+								break;
+						}
+					}
+				}
+				outSVG += outLayer + ' d="' + d + '"' + '/></g>\r\n';
+			}
+		});
+
+		outSVG += '</svg>';
+
+		return outSVG;
 	},
 	getData: function () {
 		var data = {
@@ -6804,11 +7079,17 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.RSWEIndoor.SetSnapOptions();
 
+//init dialogs
+		for (var dlg in this.options.dialogs) {
+			this.options.dialogs[dlg] = (this.options.dialogs[dlg])();
+			this._map.addControl(this.options.dialogs[dlg]);
+		}
+
 		map.on('close_all_dialogs', function () {
-			map.RSWEIndoor.loadDialog.close();
-			map.RSWEIndoor.saveDialog.close();
-			map.RSWEIndoor.saveJsonDialog.close();
-			map.RSWEIndoor.optionsDialog.close();
+			for (var dlg in this.RSWEIndoor.options.dialogs) {
+				this.RSWEIndoor.options.dialogs[dlg].close();
+				this.addControl(this.RSWEIndoor.options.dialogs[dlg]);
+			}
 
 			map.drawControl._toolbars.draw.disable();
 			map.drawControl._toolbars.edit.disable();
@@ -6944,17 +7225,6 @@ L.Map.addInitHook(function () {
 		this.options.simpleGraticule = new L.simpleGraticule().addTo(this);
 		this.options.snapGrid = new L.snapGrid().addTo(this);
 
-		this.RSWEIndoor.optionsDialog = new L.Control.Dialog.Options();
-		this.addControl(this.RSWEIndoor.optionsDialog);
-
-		this.RSWEIndoor.saveDialog = new L.Control.Dialog.Save();
-		this.addControl(this.RSWEIndoor.saveDialog);
-
-		this.RSWEIndoor.saveJsonDialog = new L.Control.Dialog.SaveJson();
-		this.addControl(this.RSWEIndoor.saveJsonDialog);
-
-		this.RSWEIndoor.loadDialog = new L.Control.Dialog.Load();
-		this.addControl(this.RSWEIndoor.loadDialog);
 		this.RSWEIndoor.RSWEinit();
 
 	}
@@ -7676,288 +7946,6 @@ L.control.dialog.options = function (options) {
 
 
 
-L.Control.Dialog.Save = L.Control.Dialog.extend({
-	options: {
-		size: [ 300, 300 ],
-		minSize: [ 100, 100 ],
-		maxSize: [ 350, 350 ],
-		anchor: [ 50, 50 ],
-		position: 'topleft',
-		initOpen: false
-	},
-	_isOpen: false,
-
-	initialize: function () {
-
-		L.setOptions(this, this.options);
-		L.Control.Dialog.prototype.initialize.call(this, this.options);
-	},
-	_getTabCount: function () {
-		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes.length;
-	},
-	_getTab: function (i) {
-		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i];
-	},
-	_getTabTitle: function (i) {
-		return this._container.firstChild.firstChild.firstChild.getElementsByTagName('UL')[0].childNodes[i];
-	},
-	_getTabContainer: function (i) {
-		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i].childNodes[0];
-	},
-
-	_selectTab: function (idx) {
-		var tabCount = this._getTabCount();
-		for (var i = 0; i < tabCount; i++) {
-			var _tab = this._getTab(i);
-			var _tabTitle = this._getTabTitle(i);
-			if (idx !== i) {
-				_tab.setAttribute('class', 'dialog-tab');
-				_tabTitle.setAttribute('class', 'dialog-tab-title');
-			} else {
-				_tab.setAttribute('class', 'dialog-tab selected');
-				_tabTitle.setAttribute('class', 'dialog-tab-title selected-li');
-			}
-		}
-	},
-	onAdd: function (map) {
-//prototupe call
-		this._container = L.Control.Dialog.prototype.onAdd.call(this, map);
-
-		this._map = map;
-		var mapSize = map.getSize();
-
-//init dialog size and position
-		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
-
-		this._isOpen = false;
-
-		L.setOptions(this, this.options);
-//init dialog tabs logic
-		var html = this.contents.join('');
-		this.setContent(html);
-		var func =  function (i) {return function () { this._selectTab(i); }; };
-		var tabCount = this._getTabCount();
-		for (var i = 0; i < tabCount; i++) { L.DomEvent.addListener(this._getTabTitle(i), 'click', func(i), this); }
-
-// create another dialog elements, add listeners, etc.
-		this._dlgCreateControls();
-
-//re-close dialog if initOpen==false to awoid some bugs
-		if (!this.options.initOpen) { this.close(); }
-		else { this.open(); }
-
-		return this._container;
-	},
-
-	close: function () {
-		this._isOpen = false;
-		L.Control.Dialog.prototype.close.call(this);
-	},
-	open: function () {
-		this._map.fire('close_all_dialogs');
-		
-		this._isOpen = true;
-		L.Control.Dialog.prototype.open.call(this);
-	},
-
-	contents: [
-		'<div class="dialog-container">',
-		'<ul class="dialog-tabs-title">',
-		'<li class="dialog-tab-title selected-li">Save Drawing As</li>',
-		'</ul>',
-		'<div class="dialog-tabs">',
-		'<div class="dialog-tab selected"><div class="dialog-tab-content"><h3>Save Drawing As</h3></div></div>',
-		'</div>',
-		'</div>',
-		''
-	],
-	saveAsText: function () {
-		var link = this.options.saveALink;
-
-		var filename = 'RSWE.json';
-		if (this.options.InputName.value) { filename = this.options.InputName.value; }
-
-		link.download = filename;
-
-		var data = this._map.RSWEIndoor.getData();
-		link.href = 'data:text/plain;base64,' + L.Util.base64Encode(data);
-
-		link.click();
-		this.close();
-	},
-
-	_dlgCreateControls: function () {
-		var tab, elem;
-		tab = this._getTabContainer(0);
-		if (tab) {
-			elem = L.DomUtil.create('div', 'save-file-name');
-			tab.appendChild(elem);
-			elem.innerHTML = ([
-				'<a href="" download="" style="display:none;"></a>',
-				'<label><input type="text" name="saveFileName" placeholder="Enter file name"/></label>',
-				'&nbsp;<input type="button" value="Save drawing to file"/>',
-				'<br><br><i>Your drawing will be saved into system \"Download\" folder.</i>'
-			]).join('');
-
-			this.options.saveALink = elem.firstChild;
-			this.options.InputName = elem.getElementsByTagName('INPUT')[0];
-			this.options.InputButton = elem.getElementsByTagName('INPUT')[1];
-
-			L.DomEvent.addListener(this.options.InputButton, 'click', function () { this.saveAsText(); }, this);
-		}
-	}
-
-});
-
-L.control.dialog.save = function (options) {
-    return new L.Control.Dialog.Save(options);
-};
-
-
-
-L.Control.Dialog.SaveJson = L.Control.Dialog.extend({
-	options: {
-		size: [ 300, 300 ],
-		minSize: [ 100, 100 ],
-		maxSize: [ 350, 350 ],
-		anchor: [ 50, 50 ],
-		position: 'topleft',
-		initOpen: false
-	},
-	_isOpen: false,
-
-	initialize: function () {
-
-		L.setOptions(this, this.options);
-		L.Control.Dialog.prototype.initialize.call(this, this.options);
-	},
-	_getTabCount: function () {
-		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes.length;
-	},
-	_getTab: function (i) {
-		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i];
-	},
-	_getTabTitle: function (i) {
-		return this._container.firstChild.firstChild.firstChild.getElementsByTagName('UL')[0].childNodes[i];
-	},
-	_getTabContainer: function (i) {
-		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i].childNodes[0];
-	},
-
-	_selectTab: function (idx) {
-		var tabCount = this._getTabCount();
-		for (var i = 0; i < tabCount; i++) {
-			var _tab = this._getTab(i);
-			var _tabTitle = this._getTabTitle(i);
-			if (idx !== i) {
-				_tab.setAttribute('class', 'dialog-tab');
-				_tabTitle.setAttribute('class', 'dialog-tab-title');
-			} else {
-				_tab.setAttribute('class', 'dialog-tab selected');
-				_tabTitle.setAttribute('class', 'dialog-tab-title selected-li');
-			}
-		}
-	},
-	onAdd: function (map) {
-//prototupe call
-		this._container = L.Control.Dialog.prototype.onAdd.call(this, map);
-
-		this._map = map;
-		var mapSize = map.getSize();
-
-//init dialog size and position
-		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
-
-		this._isOpen = false;
-
-		L.setOptions(this, this.options);
-//init dialog tabs logic
-		var html = this.contents.join('');
-		this.setContent(html);
-		var func =  function (i) {return function () { this._selectTab(i); }; };
-		var tabCount = this._getTabCount();
-		for (var i = 0; i < tabCount; i++) { L.DomEvent.addListener(this._getTabTitle(i), 'click', func(i), this); }
-
-// create another dialog elements, add listeners, etc.
-		this._dlgCreateControls();
-
-//re-close dialog if initOpen==false to awoid some bugs
-		if (!this.options.initOpen) { this.close(); }
-		else { this.open(); }
-
-		return this._container;
-	},
-
-	close: function () {
-		this._isOpen = false;
-		L.Control.Dialog.prototype.close.call(this);
-	},
-	open: function () {
-		this._map.fire('close_all_dialogs');
-		
-		this._isOpen = true;
-		L.Control.Dialog.prototype.open.call(this);
-	},
-
-	contents: [
-		'<div class="dialog-container">',
-		'<ul class="dialog-tabs-title">',
-		'<li class="dialog-tab-title selected-li">Save Json Data As</li>',
-		'</ul>',
-		'<div class="dialog-tabs">',
-		'<div class="dialog-tab selected"><div class="dialog-tab-content"><h3>Save Json Data As</h3></div></div>',
-		'</div>',
-		'</div>',
-		''
-	],
-	saveAsText: function () {
-		var link = this.options.saveALink;
-
-		var filename = 'RSWE.json';
-		if (this.options.InputName.value) { filename = this.options.InputName.value; }
-
-		link.download = filename;
-
-		var data = this._map.RSWEIndoor.getJsonData();
-		link.href = 'data:text/plain;base64,' + L.Util.base64Encode(data);
-
-		link.click();
-		this.close();
-	},
-
-	_dlgCreateControls: function () {
-		var tab, elem;
-		tab = this._getTabContainer(0);
-		if (tab) {
-			elem = L.DomUtil.create('div', 'save-file-name');
-			tab.appendChild(elem);
-			elem.innerHTML = ([
-				'<a href="" download="" style="display:none;"></a>',
-				'<label><input type="text" name="saveFileName" placeholder="Enter file name"/></label>',
-				'&nbsp;<input type="button" value="Save Json data to file"/>',
-				'<br><br><i>Your drawing will be saved into system \"Download\" folder.</i>'
-			]).join('');
-
-			this.options.saveALink = elem.firstChild;
-			this.options.InputName = elem.getElementsByTagName('INPUT')[0];
-			this.options.InputButton = elem.getElementsByTagName('INPUT')[1];
-
-			L.DomEvent.addListener(this.options.InputButton, 'click', function () { this.saveAsText(); }, this);
-		}
-	}
-
-});
-
-L.control.dialog.save = function (options) {
-    return new L.Control.Dialog.Save(options);
-};
-
-
-
 L.Control.Dialog.Load = L.Control.Dialog.extend({
 	options: {
 		size: [ 300, 300 ],
@@ -8120,6 +8108,572 @@ L.Control.Dialog.Load = L.Control.Dialog.extend({
 
 L.control.dialog.load = function (options) {
     return new L.Control.Dialog.Load(options);
+};
+
+
+
+L.Control.Dialog.Save = L.Control.Dialog.extend({
+	options: {
+		size: [ 300, 300 ],
+		minSize: [ 100, 100 ],
+		maxSize: [ 350, 350 ],
+		anchor: [ 50, 50 ],
+		position: 'topleft',
+		initOpen: false
+	},
+	_isOpen: false,
+
+	initialize: function () {
+
+		L.setOptions(this, this.options);
+		L.Control.Dialog.prototype.initialize.call(this, this.options);
+	},
+	_getTabCount: function () {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes.length;
+	},
+	_getTab: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i];
+	},
+	_getTabTitle: function (i) {
+		return this._container.firstChild.firstChild.firstChild.getElementsByTagName('UL')[0].childNodes[i];
+	},
+	_getTabContainer: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i].childNodes[0];
+	},
+
+	_selectTab: function (idx) {
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) {
+			var _tab = this._getTab(i);
+			var _tabTitle = this._getTabTitle(i);
+			if (idx !== i) {
+				_tab.setAttribute('class', 'dialog-tab');
+				_tabTitle.setAttribute('class', 'dialog-tab-title');
+			} else {
+				_tab.setAttribute('class', 'dialog-tab selected');
+				_tabTitle.setAttribute('class', 'dialog-tab-title selected-li');
+			}
+		}
+	},
+	onAdd: function (map) {
+//prototupe call
+		this._container = L.Control.Dialog.prototype.onAdd.call(this, map);
+
+		this._map = map;
+		var mapSize = map.getSize();
+
+//init dialog size and position
+		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+
+		this._isOpen = false;
+
+		L.setOptions(this, this.options);
+//init dialog tabs logic
+		var html = this.contents.join('');
+		this.setContent(html);
+		var func =  function (i) {return function () { this._selectTab(i); }; };
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) { L.DomEvent.addListener(this._getTabTitle(i), 'click', func(i), this); }
+
+// create another dialog elements, add listeners, etc.
+		this._dlgCreateControls();
+
+//re-close dialog if initOpen==false to awoid some bugs
+		if (!this.options.initOpen) { this.close(); }
+		else { this.open(); }
+
+		return this._container;
+	},
+
+	close: function () {
+		this._isOpen = false;
+		L.Control.Dialog.prototype.close.call(this);
+	},
+	open: function () {
+		this._map.fire('close_all_dialogs');
+		
+		this._isOpen = true;
+		L.Control.Dialog.prototype.open.call(this);
+	},
+
+	contents: [
+		'<div class="dialog-container">',
+		'<ul class="dialog-tabs-title">',
+		'<li class="dialog-tab-title selected-li">Save Drawing As</li>',
+		'</ul>',
+		'<div class="dialog-tabs">',
+		'<div class="dialog-tab selected"><div class="dialog-tab-content"><h3>Save Drawing As</h3></div></div>',
+		'</div>',
+		'</div>',
+		''
+	],
+	saveAsText: function () {
+		var link = this.options.saveALink;
+
+		var filename = 'RSWE.json';
+		if (this.options.InputName.value) { filename = this.options.InputName.value; }
+
+		link.download = filename;
+
+		var data = this._map.RSWEIndoor.getData();
+		link.href = 'data:text/plain;base64,' + L.Util.base64Encode(data);
+
+		link.click();
+		this.close();
+	},
+
+	_dlgCreateControls: function () {
+		var tab, elem;
+		tab = this._getTabContainer(0);
+		if (tab) {
+			elem = L.DomUtil.create('div', 'save-file-name');
+			tab.appendChild(elem);
+			elem.innerHTML = ([
+				'<a href="" download="" style="display:none;"></a>',
+				'<label><input type="text" name="saveFileName" placeholder="Enter file name"/></label>',
+				'&nbsp;<input type="button" value="Save drawing to file"/>',
+				'<br><br><i>Your drawing will be saved into system \"Download\" folder.</i>'
+			]).join('');
+
+			this.options.saveALink = elem.firstChild;
+			this.options.InputName = elem.getElementsByTagName('INPUT')[0];
+			this.options.InputButton = elem.getElementsByTagName('INPUT')[1];
+
+			L.DomEvent.addListener(this.options.InputButton, 'click', function () { this.saveAsText(); }, this);
+		}
+	}
+
+});
+
+L.control.dialog.save = function (options) {
+    return new L.Control.Dialog.Save(options);
+};
+
+
+
+L.Control.Dialog.SaveSVG = L.Control.Dialog.extend({
+	options: {
+		size: [ 300, 300 ],
+		minSize: [ 100, 100 ],
+		maxSize: [ 350, 350 ],
+		anchor: [ 50, 50 ],
+		position: 'topleft',
+		initOpen: false
+	},
+	_isOpen: false,
+
+	initialize: function () {
+
+		L.setOptions(this, this.options);
+		L.Control.Dialog.prototype.initialize.call(this, this.options);
+	},
+	_getTabCount: function () {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes.length;
+	},
+	_getTab: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i];
+	},
+	_getTabTitle: function (i) {
+		return this._container.firstChild.firstChild.firstChild.getElementsByTagName('UL')[0].childNodes[i];
+	},
+	_getTabContainer: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i].childNodes[0];
+	},
+
+	_selectTab: function (idx) {
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) {
+			var _tab = this._getTab(i);
+			var _tabTitle = this._getTabTitle(i);
+			if (idx !== i) {
+				_tab.setAttribute('class', 'dialog-tab');
+				_tabTitle.setAttribute('class', 'dialog-tab-title');
+			} else {
+				_tab.setAttribute('class', 'dialog-tab selected');
+				_tabTitle.setAttribute('class', 'dialog-tab-title selected-li');
+			}
+		}
+	},
+	onAdd: function (map) {
+//prototupe call
+		this._container = L.Control.Dialog.prototype.onAdd.call(this, map);
+
+		this._map = map;
+		var mapSize = map.getSize();
+
+//init dialog size and position
+		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+
+		this._isOpen = false;
+
+		L.setOptions(this, this.options);
+//init dialog tabs logic
+		var html = this.contents.join('');
+		this.setContent(html);
+		var func =  function (i) {return function () { this._selectTab(i); }; };
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) { L.DomEvent.addListener(this._getTabTitle(i), 'click', func(i), this); }
+
+// create another dialog elements, add listeners, etc.
+		this._dlgCreateControls();
+
+//re-close dialog if initOpen==false to awoid some bugs
+		if (!this.options.initOpen) { this.close(); }
+		else { this.open(); }
+
+		return this._container;
+	},
+
+	close: function () {
+		this._isOpen = false;
+		L.Control.Dialog.prototype.close.call(this);
+	},
+	open: function () {
+		this._map.fire('close_all_dialogs');
+		
+		this._isOpen = true;
+		L.Control.Dialog.prototype.open.call(this);
+	},
+
+	contents: [
+		'<div class="dialog-container">',
+		'<ul class="dialog-tabs-title">',
+		'<li class="dialog-tab-title selected-li">Save Data As SVG</li>',
+		'</ul>',
+		'<div class="dialog-tabs">',
+		'<div class="dialog-tab selected"><div class="dialog-tab-content"><h3>Save Data As SVG</h3></div></div>',
+		'</div>',
+		'</div>',
+		''
+	],
+	saveAsSVG: function () {
+		var link = this.options.saveALink;
+
+		var filename = 'RSWE.svg';
+		if (this.options.InputName.value) { filename = this.options.InputName.value; }
+
+		link.download = filename;
+
+		var data = this._map.RSWEIndoor.getSVGData();
+		link.href = 'data:image/svg+xml;base64,' + L.Util.base64Encode(data);
+
+		link.click();
+		this.close();
+	},
+
+	_dlgCreateControls: function () {
+		var tab, elem;
+		tab = this._getTabContainer(0);
+		if (tab) {
+			elem = L.DomUtil.create('div', 'save-file-name');
+			tab.appendChild(elem);
+			elem.innerHTML = ([
+				'<a href="" download="" style="display:none;"></a>',
+				'<label><input type="text" name="saveFileName" placeholder="Enter file name"/></label>',
+				'&nbsp;<input type="button" value="Save data to SVG file"/>',
+				'<br><br><i>Your drawing will be saved into system \"Download\" folder.</i>'
+			]).join('');
+
+			this.options.saveALink = elem.firstChild;
+			this.options.InputName = elem.getElementsByTagName('INPUT')[0];
+			this.options.InputButton = elem.getElementsByTagName('INPUT')[1];
+
+			L.DomEvent.addListener(this.options.InputButton, 'click', function () { this.saveAsSVG(); }, this);
+		}
+	}
+
+});
+
+L.control.dialog.save = function (options) {
+    return new L.Control.Dialog.Save(options);
+};
+
+
+
+L.Control.Dialog.SavePNG = L.Control.Dialog.extend({
+	options: {
+		size: [ 300, 300 ],
+		minSize: [ 100, 100 ],
+		maxSize: [ 350, 350 ],
+		anchor: [ 50, 50 ],
+		position: 'topleft',
+		initOpen: false
+	},
+	_isOpen: false,
+
+	initialize: function () {
+
+		L.setOptions(this, this.options);
+		L.Control.Dialog.prototype.initialize.call(this, this.options);
+	},
+	_getTabCount: function () {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes.length;
+	},
+	_getTab: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i];
+	},
+	_getTabTitle: function (i) {
+		return this._container.firstChild.firstChild.firstChild.getElementsByTagName('UL')[0].childNodes[i];
+	},
+	_getTabContainer: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i].childNodes[0];
+	},
+
+	_selectTab: function (idx) {
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) {
+			var _tab = this._getTab(i);
+			var _tabTitle = this._getTabTitle(i);
+			if (idx !== i) {
+				_tab.setAttribute('class', 'dialog-tab');
+				_tabTitle.setAttribute('class', 'dialog-tab-title');
+			} else {
+				_tab.setAttribute('class', 'dialog-tab selected');
+				_tabTitle.setAttribute('class', 'dialog-tab-title selected-li');
+			}
+		}
+	},
+	onAdd: function (map) {
+//prototupe call
+		this._container = L.Control.Dialog.prototype.onAdd.call(this, map);
+
+		this._map = map;
+		var mapSize = map.getSize();
+
+//init dialog size and position
+		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+
+		this._isOpen = false;
+
+		L.setOptions(this, this.options);
+//init dialog tabs logic
+		var html = this.contents.join('');
+		this.setContent(html);
+		var func =  function (i) {return function () { this._selectTab(i); }; };
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) { L.DomEvent.addListener(this._getTabTitle(i), 'click', func(i), this); }
+
+// create another dialog elements, add listeners, etc.
+		this._dlgCreateControls();
+
+//re-close dialog if initOpen==false to awoid some bugs
+		if (!this.options.initOpen) { this.close(); }
+		else { this.open(); }
+
+		return this._container;
+	},
+
+	close: function () {
+		this._isOpen = false;
+		L.Control.Dialog.prototype.close.call(this);
+	},
+	open: function () {
+		this._map.fire('close_all_dialogs');
+		
+		this._isOpen = true;
+		L.Control.Dialog.prototype.open.call(this);
+	},
+
+	contents: [
+		'<div class="dialog-container">',
+		'<ul class="dialog-tabs-title">',
+		'<li class="dialog-tab-title selected-li">Save Data As PNG</li>',
+		'</ul>',
+		'<div class="dialog-tabs">',
+		'<div class="dialog-tab selected"><div class="dialog-tab-content"><h3>Save SVG Data As</h3></div></div>',
+		'</div>',
+		'</div>',
+		''
+	],
+	saveAsPNG: function () {
+		var link = this.options.saveALink;
+
+		var filename = 'RSWE.png';
+		if (this.options.InputName.value) { filename = this.options.InputName.value; }
+
+		link.download = filename;
+
+		var _this = this;
+		this._map.RSWEIndoor.getPNGData(function (data) {
+			link.href = 'data:image/png;base64,' + data;
+			link.click();
+			_this.close();
+		});
+	},
+
+	_dlgCreateControls: function () {
+		var tab, elem;
+		tab = this._getTabContainer(0);
+		if (tab) {
+			elem = L.DomUtil.create('div', 'save-file-name');
+			tab.appendChild(elem);
+			elem.innerHTML = ([
+				'<a href="" download="" style="display:none;"></a>',
+				'<label><input type="text" name="saveFileName" placeholder="Enter file name"/></label>',
+				'&nbsp;<input type="button" value="Save data to PNG file"/>',
+				'<br><br><i>Your drawing will be saved into system \"Download\" folder.</i>'
+			]).join('');
+
+			this.options.saveALink = elem.firstChild;
+			this.options.InputName = elem.getElementsByTagName('INPUT')[0];
+			this.options.InputButton = elem.getElementsByTagName('INPUT')[1];
+
+			L.DomEvent.addListener(this.options.InputButton, 'click', function () { this.saveAsPNG(); }, this);
+		}
+	}
+
+});
+
+L.control.dialog.save = function (options) {
+    return new L.Control.Dialog.Save(options);
+};
+
+
+
+L.Control.Dialog.SaveJPG = L.Control.Dialog.extend({
+	options: {
+		size: [ 300, 300 ],
+		minSize: [ 100, 100 ],
+		maxSize: [ 350, 350 ],
+		anchor: [ 50, 50 ],
+		position: 'topleft',
+		initOpen: false
+	},
+	_isOpen: false,
+
+	initialize: function () {
+
+		L.setOptions(this, this.options);
+		L.Control.Dialog.prototype.initialize.call(this, this.options);
+	},
+	_getTabCount: function () {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes.length;
+	},
+	_getTab: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i];
+	},
+	_getTabTitle: function (i) {
+		return this._container.firstChild.firstChild.firstChild.getElementsByTagName('UL')[0].childNodes[i];
+	},
+	_getTabContainer: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i].childNodes[0];
+	},
+
+	_selectTab: function (idx) {
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) {
+			var _tab = this._getTab(i);
+			var _tabTitle = this._getTabTitle(i);
+			if (idx !== i) {
+				_tab.setAttribute('class', 'dialog-tab');
+				_tabTitle.setAttribute('class', 'dialog-tab-title');
+			} else {
+				_tab.setAttribute('class', 'dialog-tab selected');
+				_tabTitle.setAttribute('class', 'dialog-tab-title selected-li');
+			}
+		}
+	},
+	onAdd: function (map) {
+//prototupe call
+		this._container = L.Control.Dialog.prototype.onAdd.call(this, map);
+
+		this._map = map;
+		var mapSize = map.getSize();
+
+//init dialog size and position
+		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+
+		this._isOpen = false;
+
+		L.setOptions(this, this.options);
+//init dialog tabs logic
+		var html = this.contents.join('');
+		this.setContent(html);
+		var func =  function (i) {return function () { this._selectTab(i); }; };
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) { L.DomEvent.addListener(this._getTabTitle(i), 'click', func(i), this); }
+
+// create another dialog elements, add listeners, etc.
+		this._dlgCreateControls();
+
+//re-close dialog if initOpen==false to awoid some bugs
+		if (!this.options.initOpen) { this.close(); }
+		else { this.open(); }
+
+		return this._container;
+	},
+
+	close: function () {
+		this._isOpen = false;
+		L.Control.Dialog.prototype.close.call(this);
+	},
+	open: function () {
+		this._map.fire('close_all_dialogs');
+		
+		this._isOpen = true;
+		L.Control.Dialog.prototype.open.call(this);
+	},
+
+	contents: [
+		'<div class="dialog-container">',
+		'<ul class="dialog-tabs-title">',
+		'<li class="dialog-tab-title selected-li">Save Data As JPG</li>',
+		'</ul>',
+		'<div class="dialog-tabs">',
+		'<div class="dialog-tab selected"><div class="dialog-tab-content"><h3>Save Data As JPG</h3></div></div>',
+		'</div>',
+		'</div>',
+		''
+	],
+	saveAsJPG: function () {
+		var link = this.options.saveALink;
+
+		var filename = 'RSWE.jpg';
+		if (this.options.InputName.value) { filename = this.options.InputName.value; }
+
+		link.download = filename;
+
+		var _this = this;
+		this._map.RSWEIndoor.getJPGData(function (data) {
+			link.href = 'data:image/jpeg;base64,' + data;
+			link.click();
+			_this.close();
+		});
+	},
+
+	_dlgCreateControls: function () {
+		var tab, elem;
+		tab = this._getTabContainer(0);
+		if (tab) {
+			elem = L.DomUtil.create('div', 'save-file-name');
+			tab.appendChild(elem);
+			elem.innerHTML = ([
+				'<a href="" download="" style="display:none;"></a>',
+				'<label><input type="text" name="saveFileName" placeholder="Enter file name"/></label>',
+				'&nbsp;<input type="button" value="Save data to JPG file"/>',
+				'<br><br><i>Your drawing will be saved into system \"Download\" folder.</i>'
+			]).join('');
+
+			this.options.saveALink = elem.firstChild;
+			this.options.InputName = elem.getElementsByTagName('INPUT')[0];
+			this.options.InputButton = elem.getElementsByTagName('INPUT')[1];
+
+			L.DomEvent.addListener(this.options.InputButton, 'click', function () { this.saveAsJPG(); }, this);
+		}
+	}
+
+});
+
+L.control.dialog.save = function (options) {
+    return new L.Control.Dialog.Save(options);
 };
 
 

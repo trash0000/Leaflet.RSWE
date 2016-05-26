@@ -24,6 +24,8 @@ L.drawLocal = {
 				wall: 'Draw a wall',
 				window: 'Draw a window',
 				door: 'Draw a door'
+
+
 			}
 		},
 		handlers: {

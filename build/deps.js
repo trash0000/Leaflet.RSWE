@@ -27,9 +27,11 @@ var deps = {
 
 	Core: {
 		src: [
-//this plugin replace standard constants definition
+
+//this plugin replase standard constants definition
 			'Leaflet.RSWE.js'
 //			'Leaflet.draw.js'
+
 		],
 		desc: 'The core of the plugin. Currently only includes the version.'
 	},
@@ -53,6 +55,7 @@ var deps = {
 			'draw/handler/Draw.Wall.js',
 			'draw/handler/Draw.Window.js',
 			'draw/handler/Draw.Door.js'
+
 		],
 		desc: 'Additions and modifications for leaflet.draw-src.js',
 		deps: ['Core']
@@ -94,7 +97,9 @@ var deps = {
 
 	DrawUI: {
 		src: [
+//--modyfied--		
 			'draw/DrawToolbar_rswe.js'
+//			'draw/DrawToolbar_rswe.js'
 		],
 		desc: 'Draw toolbar.',
 		desc: 'Draw toolbar.',
@@ -163,14 +168,18 @@ var deps = {
 	Dialogs: {
 		src: [
 			'dialog/Leaflet.Dialog.js',
+//			'dialog/Leaflet.Dialog.RoomProps.js',
 			'dialog/Leaflet.Dialog.Options.js',
+			'dialog/Leaflet.Dialog.Load.js',
 			'dialog/Leaflet.Dialog.Save.js',
-			'dialog/Leaflet.Dialog.SaveJson.js',
-			'dialog/Leaflet.Dialog.Load.js'
+			'dialog/Leaflet.Dialog.SaveSVG.js',
+			'dialog/Leaflet.Dialog.SavePNG.js',
+			'dialog/Leaflet.Dialog.SaveJPG.js'
 		],
 		desc: 'Leaflet.Dialog plugin - Adds Custom Dialogs functionality',
 		deps: ['Core', 'CommonUI']
 	}
+
 };
 
 if (typeof exports !== 'undefined') {

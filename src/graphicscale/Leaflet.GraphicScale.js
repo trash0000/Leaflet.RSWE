@@ -64,6 +64,19 @@ L.Control.GraphicScale = L.Control.extend({
         return scale;
     },
 
+/*
+    hide: function () {
+//        this.options.hidden = true;
+        this.options.graphicScaleControl.style.display = 'none';
+        this.redraw();
+    },
+
+    show: function () {
+//        this.options.hidden = false;
+        this.options.graphicScaleControl.style.display = 'block';
+        this.redraw();
+    },
+*/
     _setStyle: function (options) {
         var classNames = ['leaflet-control-graphicscale-inner'];
         if (options.fill && options.fill !== 'nofill') {
@@ -151,6 +164,10 @@ L.Control.GraphicScale = L.Control.extend({
             //length of an half world arc at current lat
             halfWorldMeters = 6378137 * Math.PI * Math.cos(centerLat * Math.PI / 180),
 
+//            halfWorldMeters = 6378137 *1.12* Math.PI * Math.cos(centerLat * Math.PI / 180),
+
+//            halfWorldMeters = 6378137 *1.37* Math.PI * Math.cos(centerLat * Math.PI / 180),
+
             //length of this arc from map left to map right
             dist = halfWorldMeters * (bounds.getNorthEast().lng - bounds.getSouthWest().lng) / 180,
             size = this._map.getSize();
@@ -163,9 +180,12 @@ L.Control.GraphicScale = L.Control.extend({
     },
 
     _updateScale: function (maxMeters, options) {
+
         var scale = this._getBestScale(maxMeters, options.minUnitWidth, options.maxUnitsWidth);
 
+        // this._render(scale.unit.unitPx, scale.numUnits, scale.unit.unitMeters);
         this._render(scale);
+
     },
 
     _getBestScale: function (maxMeters, minUnitWidthPx, maxUnitsWidthPx) {
