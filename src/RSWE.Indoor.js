@@ -814,8 +814,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 	getPNGData: function (callback) {
 		var img = new Image();
 		var svgStr = L.Util.base64Encode(this.getSVGData());
-		img.w = this.getSVGSize().x + 1;
-		img.h = this.getSVGSize().y + 1;
+		img.w = this.getSVGSize().x;
+		img.h = this.getSVGSize().y;
 
 		img.onload = function () {
 			var canvas = document.createElement('canvas');
@@ -840,8 +840,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 	getJPGData: function (callback) {
 		var img = new Image();
 		var svgStr = L.Util.base64Encode(this.getSVGData());
-		img.w = this.getSVGSize().x + 1;
-		img.h = this.getSVGSize().y + 1;
+		img.w = this.getSVGSize().x;
+		img.h = this.getSVGSize().y;
 
 		img.onload = function () {
 			var canvas = document.createElement('canvas');
@@ -873,7 +873,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		var sx = s * 180 / (halfWorldMeters * coslat);
 		var sy = s * 180 / halfWorldMeters;
 
-		return {'x': Math.round((bds.getEast() - bds.getWest()) / (sx)), 'y': Math.round((-bds.getSouth() + bds.getNorth()) / (sy))};
+		return {'x': Math.round((bds.getEast() - bds.getWest()) / (sx) + 1), 'y': Math.round((-bds.getSouth() + bds.getNorth()) / (sy)) + 1};
 	},
 
 	getSVGData: function () {
