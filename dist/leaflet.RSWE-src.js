@@ -6862,9 +6862,11 @@ L.Control.RSWEIndoor = L.Control.extend({
 //	},
 	getPNGData: function (callback) {
 		var img = new Image();
-		var svgStr = L.Util.base64Encode(this.getSVGData());
 		img.w = this.getSVGSize().x;
 		img.h = this.getSVGSize().y;
+		if (img.w === 0 && img.h === 0) { return callback(''); }
+
+		var svgStr = L.Util.base64Encode(this.getSVGData());
 
 		img.onload = function () {
 			var canvas = document.createElement('canvas');
@@ -6888,9 +6890,11 @@ L.Control.RSWEIndoor = L.Control.extend({
 	},
 	getJPGData: function (callback) {
 		var img = new Image();
-		var svgStr = L.Util.base64Encode(this.getSVGData());
 		img.w = this.getSVGSize().x;
 		img.h = this.getSVGSize().y;
+		if (img.w === 0 && img.h === 0) { return callback(''); }
+
+		var svgStr = L.Util.base64Encode(this.getSVGData());
 
 		img.onload = function () {
 			var canvas = document.createElement('canvas');
@@ -6913,6 +6917,15 @@ L.Control.RSWEIndoor = L.Control.extend({
 		img.src = 'data:image/svg+xml;base64,' + svgStr;
 	},
 	getSVGSize: function () {
+		var isEmpty = true;
+		for (var prop in this.options.drawnWallsLayerGrp._layers) {
+			if (this.options.drawnWallsLayerGrp._layers.hasOwnProperty(prop)) {
+				isEmpty = false;
+				break;
+			}
+		}
+
+		if (isEmpty) { return {'x': 0, 'y': 0}; }
 		var bds = this.options.drawnWallsLayerGrp.getBounds();
 
 		var coslat = Math.cos(bds.getCenter().lat * Math.PI / 180);
@@ -6926,6 +6939,16 @@ L.Control.RSWEIndoor = L.Control.extend({
 	},
 
 	getSVGData: function () {
+		var isEmpty = true;
+		for (var prop in this.options.drawnWallsLayerGrp._layers) {
+			if (this.options.drawnWallsLayerGrp._layers.hasOwnProperty(prop)) {
+				isEmpty = false;
+				break;
+			}
+		}
+
+		if (isEmpty) { return ''; }
+
 		var bds = this.options.drawnWallsLayerGrp.getBounds();
 
 		var coslat = Math.cos(bds.getCenter().lat * Math.PI / 180);
