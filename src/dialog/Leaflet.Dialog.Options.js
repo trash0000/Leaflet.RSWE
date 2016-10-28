@@ -1,7 +1,7 @@
 L.Control.Dialog.Options = L.Control.Dialog.extend({
 	options: {
-		size: [ 300, 300 ],
-		minSize: [ 100, 100 ],
+		size: [ 320, 190 ],
+		minSize: [ 320, 190 ],
 		maxSize: [ 350, 350 ],
 		anchor: [ 50, 50 ],
 		position: 'topleft',
@@ -50,8 +50,8 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 
 //init dialog size and position
 		this.options.size = [ Math.floor(0.6 * mapSize.x), Math.floor(0.6 * mapSize.y) ];
-		this.options.maxSize = [ Math.floor(0.6 * mapSize.x), Math.floor(0.6 * mapSize.y) ];
-		this.options.anchor = [ Math.floor(0.2 * mapSize.x), Math.floor(0.2 * mapSize.y) ];
+		this.options.size = [ Math.max(this.options.size[0], this.options.minSize[0]), Math.max(this.options.size[1], this.options.minSize[1]) ];
+		this.options.anchor = [ Math.floor(0.5 * (mapSize.x - this.options.size[0])), Math.floor(0.5 * (mapSize.y - this.options.size[1])) ];
 
 		this._isOpen = false;
 
@@ -153,7 +153,7 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 			}
 
 			if (this._map.RSWEIndoor.options.fitBondsAfterLoad !== undefined) {
-				elem = L.DomUtil.create('div', 'display-graphicscale-control');
+				elem = L.DomUtil.create('div', 'display-fitbonds-control');
 				tab.appendChild(elem);
 				if (this._map.RSWEIndoor.options.fitBondsAfterLoad === true) {
 					elem.innerHTML =
@@ -167,6 +167,45 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 						this._map.RSWEIndoor.options.fitBondsAfterLoad = true;
 					} else {
 						this._map.RSWEIndoor.options.fitBondsAfterLoad = false;
+					}
+				}, this);
+			}
+
+			if (this._map.RSWEIndoor.options.showSizeArrows !== undefined) {
+				elem = L.DomUtil.create('div', 'display-showSizeArrows-control');
+				tab.appendChild(elem);
+				if (this._map.RSWEIndoor.options.showSizeArrows === true) {
+					elem.innerHTML =
+						'<label><input type="checkbox" checked name="showSizeArrows" value="1" />Show Size Arrows</label>';
+				} else {
+					elem.innerHTML =
+						'<label><input type="checkbox" name="showSizeArrows" value="1" />Show Size Arrows</label>';
+				}
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.checked) {
+						this._map.RSWEIndoor.options.showSizeArrows = true;
+					} else {
+						this._map.RSWEIndoor.options.showSizeArrows = false;
+					}
+					this._map.fire('redraw:all');
+				}, this);
+			}
+			if (this._map.RSWEIndoor.options.dontShowSmallSizeLabels !== undefined) {
+				elem = L.DomUtil.create('div', 'dontShowSmallSizeLabels-control');
+				tab.appendChild(elem);
+				elem.innerHTML = '<label><input type="text" name="dontShowSmallSizeLabels" />' +
+					' Dont Show Wall Size Labels Smaller Than(meters)</label>';
+				elem.firstChild.firstElementChild.setAttribute('value', this._map.RSWEIndoor.options.dontShowSmallSizeLabels);
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.value) {
+						var val = evt.target.value.replace(new RegExp(',', 'g'), '.');
+						if (!isNaN(val)) {
+							this._map.RSWEIndoor.options.dontShowSmallSizeLabels = val;
+							evt.target.value = val;
+							this._map.fire('redraw:all');
+						} else {
+							evt.target.value = this._map.RSWEIndoor.options.dontShowSmallSizeLabels;
+						}
 					}
 				}, this);
 			}
@@ -218,7 +257,7 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 			if (this._map.RSWEIndoor.options.snapOptions.gridStep !== undefined) {
 				elem = L.DomUtil.create('div', 'snap-grid-step-options-control');
 				tab.appendChild(elem);
-				elem.innerHTML = '<label><input type="text" name=snapgridstep" /> Snap Grid Step (meters)</label>';
+				elem.innerHTML = '<label><input type="text" name=snapgridstep" />Snap Grid Step (meters)</label>';
 				elem.firstChild.firstElementChild.setAttribute('value', this._map.RSWEIndoor.options.snapOptions.gridStep);
 				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
 					if (evt.target.value) {

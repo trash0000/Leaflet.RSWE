@@ -136,7 +136,6 @@ L.SimpleGraticule = L.LayerGroup.extend({
         var lines = new Array(counts.x + counts.y);
         var labels = new Array(counts.x + counts.y);
 
-
         var coslat = Math.cos(this._bounds.getCenter().lat * Math.PI / 180);
         var halfWorldMeters = 6378137 * Math.PI;
 
@@ -148,18 +147,19 @@ L.SimpleGraticule = L.LayerGroup.extend({
         for (var i = 0; i <= counts.x; i++) {
             var x = (mins.x + (i) * sx);
             lines[i] = this.buildXLine(x);
-            if (!this.options.showOriginLabel) { labels[i] = this.buildLabel('gridlabel-horiz', x); }
+            if (this.options.showOriginLabel) { labels[i] = this.buildLabel('gridlabel-horiz', x); }
         }
 
         //for vertical lines
         for (var j = 0; j <= counts.y; j++) {
             var y = (mins.y + (j) * sy);
             lines[j + i] = this.buildYLine(y);
-            if (!this.options.showOriginLabel) { labels[j + i] = this.buildLabel('gridlabel-vert', y); }
+            if (this.options.showOriginLabel) { labels[j + i] = this.buildLabel('gridlabel-vert', y); }
         }
 
         lines.forEach(this.addLayer, this);
-        if (!this.options.showOriginLabel) { labels.forEach(this.addLayer, this); }
+        if (this.options.showOriginLabel) { labels.forEach(this.addLayer, this); }
+        this.eachLayer(function (layer) { layer.bringToBack(); });
     },
 
     buildXLine: function (x) {

@@ -35,15 +35,19 @@ L.Draw.Polygon = L.Draw.Polyline.extend({
 
 		// The first marker should have a click handler to close the polygon
 		if (markerCount === 1) {
-			this._markers[0].on('click', this._finishShape, this);
+			L.DomEvent.addListener(this._markers[0]._icon, 'mouseup', this._onMarkerMouseUp, this);
+			L.DomEvent.addListener(this._markers[0]._icon, 'touchend', this._onMarkerMouseUp, this);
 		}
 
-		// Add and update the double click handler
+// Add and update the double click handler
 		if (markerCount > 2) {
-			this._markers[markerCount - 1].on('dblclick', this._finishShape, this);
-			// Only need to remove handler if has been added before
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'mouseup', this._onMarkerMouseUp, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'touchend', this._onMarkerMouseUp, this);
+// Only need to remove handler if has been added before
 			if (markerCount > 3) {
-				this._markers[markerCount - 2].off('dblclick', this._finishShape, this);
+				L.DomEvent.removeListener(this._markers[markerCount - 2]._icon, 'mouseup', this._onMarkerMouseUp);
+				L.DomEvent.removeListener(this._markers[markerCount - 2]._icon, 'touchend', this._onMarkerMouseUp);
+
 			}
 		}
 	},
@@ -97,10 +101,13 @@ L.Draw.Polygon = L.Draw.Polyline.extend({
 		var markerCount = this._markers.length;
 
 		if (markerCount > 0) {
-			this._markers[0].off('click', this._finishShape, this);
+			L.DomEvent.removeListener(this._markers[0]._icon, 'mouseup', this._onMarkerMouseUp);
+			L.DomEvent.removeListener(this._markers[0]._icon, 'touchend', this._onMarkerMouseUp);
 
 			if (markerCount > 2) {
-				this._markers[markerCount - 1].off('dblclick', this._finishShape, this);
+				L.DomEvent.removeListener(this._markers[markerCount - 1]._icon, 'mouseup', this._onMarkerMouseUp);
+				L.DomEvent.removeListener(this._markers[markerCount - 1]._icon, 'touchend', this._onMarkerMouseUp);
+
 			}
 		}
 	}

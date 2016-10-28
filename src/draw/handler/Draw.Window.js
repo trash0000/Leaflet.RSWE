@@ -13,7 +13,7 @@ L.Draw.Window = L.Draw.Polyline.extend({
 			timeout: 2500
 		},
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		}),
 		guidelineDistance: 20,
@@ -46,7 +46,8 @@ L.Draw.Window = L.Draw.Polyline.extend({
 		// The last marker should have a click handler to close the polyline
 		// Remove the old marker click handler (as only the last point should close the polyline)
 		if (markerCount > 1) {
-			this._markers[markerCount - 1].on('click', this._finishShape, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'mouseup', this._onMarkerMouseUp, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'touchend', this._onMarkerMouseUp, this);
 //allow only two-points lines
 			this._finishShape();
 		}

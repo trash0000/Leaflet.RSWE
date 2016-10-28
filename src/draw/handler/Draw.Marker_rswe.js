@@ -69,6 +69,8 @@ L.Draw.Marker = L.Draw.Feature.extend({
 	},
 
 	_onMouseMove: function (e) {
+		e.preventDefault();
+
 		var latlng = e.latlng;
 
 		this._tooltip.updatePosition(latlng);

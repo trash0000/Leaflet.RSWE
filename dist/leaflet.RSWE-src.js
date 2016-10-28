@@ -6,10 +6,18 @@
 	https://github.com/syas
 */
 (function (window, document, undefined) {(function () {
+//force to create zoomControl at the same corner as FullScreen
+	L.Map.addInitHook(function () {
+		var _map = this;
+		if (!_map.options.zoomControl) {
+			this.zoomControl = new L.Control.Zoom({ position: 'bottomright' });
+			this.addControl(this.zoomControl);
+		}
+	});
 
 	L.Control.FullScreen = L.Control.extend({
 		options: {
-			position: 'topleft',
+			position: 'bottomright',
 			title: 'Full Screen',
 			titleCancel: 'Exit Full Screen',
 			forceSeparateButton: false,
@@ -71,7 +79,7 @@
 				} else {
 					L.DomUtil.removeClass(map._container, 'leaflet-pseudo-fullscreen');
 				}
-				map.invalidateSize();
+				setTimeout(L.bind(map.invalidateSize, map), 200);
 				map.fire('exitFullscreen');
 				map._exitFired = true;
 				map._isFullscreen = false;
@@ -81,7 +89,7 @@
 				} else {
 					L.DomUtil.addClass(map._container, 'leaflet-pseudo-fullscreen');
 				}
-				map.invalidateSize();
+				setTimeout(L.bind(map.invalidateSize, map), 200);
 				map.fire('enterFullscreen');
 				map._isFullscreen = true;
 			}
@@ -107,8 +115,7 @@
 
 	L.Map.addInitHook(function () {
 		L.extend(this.options, {
-			fullscreenControl: true,
-			fullscreenControlOptions: { position: 'topleft'	}
+			fullscreenControl: true
 		});
 
 		if (this.options.fullscreenControl) {
@@ -121,9 +128,7 @@
 Native FullScreen JavaScript API
 -------------
 Assumes Mozilla naming conventions instead of W3C for now
-
 source : http://johndyer.name/native-fullscreen-javascript-api-plus-jquery-plugin/
-
 */
 
 	var
@@ -440,6 +445,198 @@ L.curve = function (path, options) {
 
 
 /*
+ * Leaflet.TextPath - Shows text along a polyline
+ * Inspired by Tom Mac Wright article :
+ * http://mapbox.com/osmdev/2012/11/20/getting-serious-about-svg/
+ */
+
+(function () {
+        L.ScalableText = L.Path.extend({
+            initialize: function (text, bindPoint, heightPoint, options) {
+                L.Path.prototype.initialize.call(this, options);
+
+                this._latlngs = this._convertLatLngs([bindPoint, heightPoint]);
+                this._text = text;
+                this.bindPoint = this._latlngs[0];// ? this._latlngs[0] : new L.LatLng(0, 0);
+                this.heightPoint = this._latlngs[1];// ? this._latlngs[1] : new L.LatLng(0, 0);
+            },
+
+            options: {
+		// how much to simplify the polyline on each zoom level
+		// more = better performance and smoother look, less = more accurate
+                bgColor: 'black',
+                attributes: {'fill': 'white', 'text-anchor': 'start', 'line-height': '15px', 'font-size': '12px', 'font-family': 'Arial'},
+                orientation: 'normal',
+                center: true,
+                below: false
+
+
+            },
+
+            onAdd: function (map) {
+                L.Path.prototype.onAdd.call(this, map);
+                this._textRedraw();
+            },
+
+            onRemove: function (map) {
+                map = map || this._map;
+                if (map && this._gNode && this._textNode && this._rectNode) {
+                    this._gNode.removeChild(this._textNode);
+                    this._gNode.removeChild(this._rectNode);
+                    delete this._textNode;
+                    delete this._rectNode;
+
+                }
+                if (map && this._container) {
+                    this._container.removeChild(this._gNode);
+                    delete this._gNode;
+                }
+                L.Path.prototype.onRemove.call(this, map);
+            },
+
+            bringToFront: function () {
+                L.Path.prototype.bringToFront.call(this, map);
+                this._textRedraw();
+            },
+            bringToBack: function () {
+                L.Path.prototype.bringToBack.call(this, map);
+                this._textRedraw();
+            },
+
+            _updatePath: function () {
+                if (!this._map) { return; }
+                L.Path.prototype._updatePath.call(this);
+                this._textRedraw();
+            },
+
+            redraw: function () {
+                if (!this._map) { return; }
+                L.Path.prototype.redraw.call(this);
+                this._textRedraw();
+            },
+
+            _textRedraw: function () {
+                var text = this._text,
+                options = this.options;
+                if (text) { this.setText(text, options); }
+            },
+
+            projectLatlngs: function () {
+                this._originalPoints = [];
+
+                for (var i = 0, len = this._latlngs.length; i < len; i++) {
+                    this._originalPoints[i] = this._map.latLngToLayerPoint(this._latlngs[i]);
+                }
+            },
+
+            getLatLngs: function () {
+                return this._latlngs;
+            },
+
+            getBounds: function () {
+                return new L.LatLngBounds(this.getLatLngs());
+            },
+
+            _convertLatLngs: function (latlngs, overwrite) {
+                var i, len, target = overwrite ? latlngs : [];
+  
+                for (i = 0, len = latlngs.length; i < len; i++) {
+                    if (L.Util.isArray(latlngs[i]) && typeof latlngs[i][0] !== 'number') { return; }
+                    target[i] = L.latLng(latlngs[i]);
+                }
+                return target;
+            },
+
+            _initEvents: function () {
+                L.Path.prototype._initEvents.call(this);
+            },
+            setText: function (text, options) {
+                this._text = text;
+                this.options = L.Util.extend(this.options, options);
+/* If not in SVG mode or Polyline not added to map yet return */
+/* setText will be called by onAdd, using value stored in this._text */
+                if (!L.Browser.svg || typeof this._map === 'undefined') { return this; }
+/* If empty text, hide */
+                if (!this._text) {
+                    if (this._map && this._container && this._gNode && this._textNode && this.rectNode) {
+                        this._gNode.removeChild(this._textNode);
+                        this._gNode.removeChild(this._rectNode);
+                        delete this._textNode;
+                        delete this._rectNode;
+                    }
+                    if (this._container && this._gNode) {
+                        this._container.removeChild(this._gNode);
+                        delete this._gNode;
+                    }
+                    return this;
+                }
+
+                if (!this._gNode) {
+                    this._gNode = L.Path.prototype._createElement('g');
+
+                    if (!this._rectNode) {
+                        this._rectNode = L.Path.prototype._createElement('rect');
+                        this._gNode.appendChild(this._rectNode);
+                    }
+                    if (!this._textNode) {
+                        this._textNode = L.Path.prototype._createElement('text');
+                        this._gNode.appendChild(this._textNode);
+                    }
+                    this._container.appendChild(this._gNode);
+                }
+
+                for (var attr in options.attributes) { this._textNode.setAttribute(attr, options.attributes[attr]); }
+
+                this._textNode.innerHTML = this._text.replace(/ /g, '\u00A0');
+                if (this.heightPoint && this.bindPoint) {
+                    var lineHeight = parseInt(options.attributes['line-height'].replace('px', ''), 10);
+                    var fontSize = parseInt(options.attributes['font-size'].replace('px', ''), 10);
+
+                    var point = this._map.latLngToLayerPoint(this.bindPoint);
+                    var scaleH = point.distanceTo(this._map.latLngToLayerPoint(this.heightPoint)) / lineHeight;
+
+                    var coslat1 = Math.cos(this.bindPoint.lat * Math.PI / 180);
+
+                    var rotateAngle1 = Math.atan2(-this.bindPoint.lat + this.heightPoint.lat,
+			(this.bindPoint.lng - this.heightPoint.lng) * coslat1
+			) * 180 / Math.PI - 90;
+                    var transform = 'translate('  + point.x  + ' ' + point.y + ')' +
+                        ' scale(' + scaleH + ') rotate(' + rotateAngle1 + ')';
+
+                    if (this.options.center) {transform = transform + ' translate('  + (-0.5 * this._textNode.getComputedTextLength()) + ')'; }
+	
+                    this._textNode.setAttribute('x', '0');
+                    this._textNode.setAttribute('y', '-' + 0.8 * (lineHeight - fontSize));
+
+                    this._rectNode.setAttribute('x', '0');
+                    this._rectNode.setAttribute('y', '-' + lineHeight);
+                    this._rectNode.setAttribute('height', '' + lineHeight);
+                    this._rectNode.setAttribute('width', this._textNode.getComputedTextLength());
+                    this._rectNode.setAttribute('fill', this.options.bgColor);
+
+                    this._rectNode.setAttribute('transform', transform);
+                    this._textNode.setAttribute('transform', transform);
+
+                    point = null;
+                }
+/* Initialize mouse events for the additional nodes */
+/*                if (this.options.clickable) {
+                    if (L.Browser.svg || !L.Browser.vml) { this.textNode.setAttribute('class', 'leaflet-clickable'); }
+
+                    var events = ['dblclick', 'mousedown', 'mouseover', 'mouseout', 'mousemove', 'contextmenu'];
+                    for (var i = 0; i < events.length; i++) { L.DomEvent.on(textNode, events[i], this._fireMouseEvent, this); }
+                }
+*/
+                return this;
+            }
+        });
+
+        L.scalabletext = function (latlngs, options) {
+            return new L.ScalableText(latlngs, options);
+        };
+    })();
+
+/*
  * Leaflet.draw assumes that you have already included the Leaflet library.
  */
 L.drawVersion = '0.2.4-dev';
@@ -662,7 +859,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			timeout: 2500
 		},
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		}),
 		guidelineDistance: 20,
@@ -672,8 +869,8 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			color: '#bbbbbb',
 			weight: 4,
 			opacity: 0.5,
-			fill: false,
-			clickable: true
+			fill: false
+//			clickable: true
 		},
 		metric: true, // Whether to use the metric meaurement system or imperial
 		showLength: true, // Whether to display distance in the tooltip
@@ -685,6 +882,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 	},
 
 	initialize: function (map, options) {
+		this._map = map;
 		// Need to set this here to ensure the correct message is used.
 		this.options.drawError.message = L.drawLocal.draw.handlers.polyline.error;
 
@@ -716,27 +914,51 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			// we can create vertices over other map layers (markers, vector layers). We
 			// also do not want to trigger any click handlers of objects we are clicking on
 			// while drawing.
+
 			if (!this._mouseMarker) {
 				this._mouseMarker = L.marker(this._map.getCenter(), {
 					icon: L.divIcon({
-						className: 'leaflet-mouse-marker',
+						className: 'leaflet-div-icon leaflet-mouse-marker',
 						iconAnchor: [20, 20],
-						iconSize: [40, 40]
+						iconSize: [40, 40],
+						draggable: true
+
 					}),
 					opacity: 0,
 					zIndexOffset: this.options.zIndexOffset
 				});
 			}
 
+			
+
 			this._mouseMarker
-				.on('mousedown', this._onMouseDown, this)
+//				.on('mousedown', this._onMouseDown, this)
+//				.on('touchstart', this._onMouseDown, this)
 				.addTo(this._map);
 
 			this._map
-				.on('mousemove', this._onMouseMove, this)
-				.on('mouseup', this._onMouseUp, this)
+//				.on('mousedown', this._onMouseDown, this)
+//				.on('mousemove', this._onMouseMove, this)
+//				.on('mouseup', this._onMouseUp, this)
+
+//				.on('touchstart', this._onMouseDown, this)
+//				.on('touchmove', this._onMouseMove, this)
+//				.on('touchend', this._onMouseUp, this)
+
 				.on('zoomend', this._onZoomEnd, this);
+
+			L.DomEvent.addListener(this._map._container, 'mousedown', this._onMouseDown, this);
+			L.DomEvent.addListener(this._map._container, 'mousemove', this._onMouseMove, this);
+			L.DomEvent.addListener(this._map._container, 'mouseup', this._onMouseUp, this);
+
+			L.DomEvent.addListener(this._map._container, 'touchstart', this._onMouseDown, this);
+			L.DomEvent.addListener(this._map._container, 'touchmove', this._onMouseMove, this);
+			L.DomEvent.addListener(this._map._container, 'touchend', this._onMouseUp, this);
+
+			this._map.dragging.disable();
+
 		}
+
 	},
 
 	removeHooks: function () {
@@ -749,13 +971,24 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		// remove markers from map
 		this._map.removeLayer(this._markerGroup);
 		delete this._markerGroup;
+
+/*
+		for (var ii = this._markers.count - 1; ii >= 0; ii--) {
+			this._markers[ii].removeEventListener('mousedown', this._onMarkerMouseDown, false);
+			this._markers[ii].removeEventListener('mouseup', this._onMarkerMouseUp, false);
+
+			this._markers[ii].removeEventListener('touchstart', this._onMarkerMouseDown, false);
+			this._markers[ii].removeEventListener('touchend', this._onMarkerMouseUp, false);
+
+		}
+*/
 		delete this._markers;
 
 		this._map.removeLayer(this._poly);
 		delete this._poly;
 
-		this._mouseMarker
-			.off('mousedown', this._onMouseDown, this);
+//		this._mouseMarker
+//			.off('mousedown', this._onMouseDown, this);
 //			.off('mouseup', this._onMouseUp, this);
 		this._map.removeLayer(this._mouseMarker);
 		delete this._mouseMarker;
@@ -764,11 +997,27 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		this._clearGuides();
 
 		this._map
-			.off('mousemove', this._onMouseMove, this)
+//			.off('mousedown', this._onMouseDown, this)
+//			.off('mousemove', this._onMouseMove, this)
+//			.off('mouseup', this._onMouseUp, this)
+
+//			.off('touchstart', this._onMouseDown, this)
+//			.off('touchmove', this._onMouseMove, this)
+//			.off('touchend', this._onMouseUp, this)
+
 			.off('zoomend', this._onZoomEnd, this);
 
-		this._map
-			.off('mouseup', this._onMouseUp, this);
+
+		L.DomEvent.removeListener(this._map._container, 'mousedown', this._onMouseDown);
+		L.DomEvent.removeListener(this._map._container, 'mousemove', this._onMouseMove);
+		L.DomEvent.removeListener(this._map._container, 'mouseup', this._onMouseUp);
+
+		L.DomEvent.removeListener(this._map._container, 'touchstart', this._onMouseDown);
+		L.DomEvent.removeListener(this._map._container, 'touchmove', this._onMouseMove);
+		L.DomEvent.removeListener(this._map._container, 'touchend', this._onMouseUp);
+
+		if (this._map.options.dragging) { this._map.dragging.enable(); }
+
 	},
 
 	deleteLastVertex: function () {
@@ -810,6 +1059,10 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 
 		this._vertexChanged(latlng, true);
 	},
+	_onMarkerMouseUp: function (e) {
+		e.preventDefault();
+		this._finishShape();
+	},
 
 	_finishShape: function () {
 		var intersects = this._poly.newLatLngIntersects(this._poly.getLatLngs()[0], true);
@@ -836,19 +1089,34 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 	},
 
 	_onMouseMove: function (e) {
+//cause we set handlers directly we need to calculate additional event characteristics 
+		e.preventDefault();
+
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.lastTouch = e.originalEvent.touches[0];
+			this.startTouch = this.lastTouch;
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
 		var newPos = e.layerPoint,
 			latlng = e.latlng;
 
 		this._currentLatLng = latlng;
-		this._updateTooltip(latlng);
-
+		if (!e.originalEvent.touches) {
+			this._updateTooltip(latlng);
+		}
 		// Update the guide line
 		this._updateGuide(newPos);
 
 		// Update the mouse marker position
 		this._mouseMarker.setLatLng(latlng);
 
-		L.DomEvent.preventDefault(e.originalEvent);
 	},
 
 	_vertexChanged: function (latlng, added) {
@@ -864,12 +1132,37 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 	},
 
 	_onMouseDown: function (e) {
+		e.preventDefault();
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.startTouch = e.originalEvent.touches[0];
+			this.lastTouch = e.originalEvent.touches[0];
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
 		var originalEvent = e.originalEvent;
 		this._mouseDownOrigin = L.point(originalEvent.clientX, originalEvent.clientY);
 		this._latlngOrigin = e.latlng;
 	},
 
 	_onMouseUp: function (e) {
+		e.preventDefault();
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+//			this.lastTouch = (this.lastTouch) ? this.lastTouch : this.startTouch;
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : this.lastTouch.clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : this.lastTouch.clientY;
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
 		if (this._mouseDownOrigin) {
 			if (this._latlngOrigin) { e.latlng = this._latlngOrigin; }
 
@@ -897,17 +1190,22 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		}
 		// The last marker should have a click handler to close the polyline
 		if (markerCount > 1) {
-			this._markers[markerCount - 1].on('click', this._finishShape, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'mouseup', this._onMarkerMouseUp, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'touchend', this._onMarkerMouseUp, this);
 		}
 		// Remove the old marker click handler (as only the last point should close the polyline)
 		if (markerCount > 2) {
-			this._markers[markerCount - 2].off('click', this._finishShape, this);
+			L.DomEvent.removeListener(this._markers[markerCount - 2]._icon, 'mouseup', this._onMarkerMouseUp);
+			L.DomEvent.removeListener(this._markers[markerCount - 2]._icon, 'touchend', this._onMarkerMouseUp);
 		}
 	},
 
 	_createMarker: function (latlng) {
 		var marker = new L.Marker(latlng, {
 			icon: this.options.icon,
+			className: 'leaflet-div-icon leaflet-editing-icon',
+			draggable: false,
+			clickable: true,
 			zIndexOffset: this.options.zIndexOffset * 2
 		});
 
@@ -1044,13 +1342,14 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 	},
 
 	_getMeasurementString: function () {
-		var currentLatLng = this._currentLatLng,
-			previousLatLng = this._markers[this._markers.length - 1].getLatLng(),
-			distance;
+		var distance = 0;
+
+		if (this._currentLatLng && this._markers.length > 0) {
+			var currentLatLng = this._currentLatLng, previousLatLng = this._markers[this._markers.length - 1].getLatLng();
 
 		// calculate the distance from the last fixed point to the mouse position
-		distance = this._measurementRunningTotal + currentLatLng.distanceTo(previousLatLng);
-
+			distance = this._measurementRunningTotal + currentLatLng.distanceTo(previousLatLng);
+		}
 		return L.GeometryUtil.readableDistance(distance, this.options.metric);
 	},
 
@@ -1095,7 +1394,8 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 
 	_cleanUpShape: function () {
 		if (this._markers.length > 1) {
-			this._markers[this._markers.length - 1].off('click', this._finishShape, this);
+			L.DomEvent.removeListener(this._markers[this._markers.length - 1]._icon, 'mouseup', this._onMarkerMouseUp);
+			L.DomEvent.removeListener(this._markers[this._markers.length - 1]._icon, 'touchend', this._onMarkerMouseUp);
 		}
 	},
 
@@ -1143,15 +1443,19 @@ L.Draw.Polygon = L.Draw.Polyline.extend({
 
 		// The first marker should have a click handler to close the polygon
 		if (markerCount === 1) {
-			this._markers[0].on('click', this._finishShape, this);
+			L.DomEvent.addListener(this._markers[0]._icon, 'mouseup', this._onMarkerMouseUp, this);
+			L.DomEvent.addListener(this._markers[0]._icon, 'touchend', this._onMarkerMouseUp, this);
 		}
 
-		// Add and update the double click handler
+// Add and update the double click handler
 		if (markerCount > 2) {
-			this._markers[markerCount - 1].on('dblclick', this._finishShape, this);
-			// Only need to remove handler if has been added before
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'mouseup', this._onMarkerMouseUp, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'touchend', this._onMarkerMouseUp, this);
+// Only need to remove handler if has been added before
 			if (markerCount > 3) {
-				this._markers[markerCount - 2].off('dblclick', this._finishShape, this);
+				L.DomEvent.removeListener(this._markers[markerCount - 2]._icon, 'mouseup', this._onMarkerMouseUp);
+				L.DomEvent.removeListener(this._markers[markerCount - 2]._icon, 'touchend', this._onMarkerMouseUp);
+
 			}
 		}
 	},
@@ -1205,10 +1509,13 @@ L.Draw.Polygon = L.Draw.Polyline.extend({
 		var markerCount = this._markers.length;
 
 		if (markerCount > 0) {
-			this._markers[0].off('click', this._finishShape, this);
+			L.DomEvent.removeListener(this._markers[0]._icon, 'mouseup', this._onMarkerMouseUp);
+			L.DomEvent.removeListener(this._markers[0]._icon, 'touchend', this._onMarkerMouseUp);
 
 			if (markerCount > 2) {
-				this._markers[markerCount - 1].off('dblclick', this._finishShape, this);
+				L.DomEvent.removeListener(this._markers[markerCount - 1]._icon, 'mouseup', this._onMarkerMouseUp);
+				L.DomEvent.removeListener(this._markers[markerCount - 1]._icon, 'touchend', this._onMarkerMouseUp);
+
 			}
 		}
 	}
@@ -1420,6 +1727,8 @@ L.Draw.Circle = L.Draw.SimpleShape.extend({
 	},
 
 	_onMouseMove: function (e) {
+		e.preventDefault();
+
 		var latlng = e.latlng,
 			showRadius = this.options.showRadius,
 			useMetric = this.options.metric,
@@ -1512,6 +1821,8 @@ L.Draw.Marker = L.Draw.Feature.extend({
 	},
 
 	_onMouseMove: function (e) {
+		e.preventDefault();
+
 		var latlng = e.latlng;
 
 		this._tooltip.updatePosition(latlng);
@@ -1565,7 +1876,7 @@ L.Draw.Wall = L.Draw.Polyline.extend({
 			timeout: 2500
 		},
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		}),
 		guidelineDistance: 20,
@@ -1594,20 +1905,34 @@ L.Draw.Wall = L.Draw.Polyline.extend({
 
 	_updateStartHandler: function () {
 		var markerCount = 0;
-
 		if (this._markers !== undefined) {
 			markerCount = this._markers.length;
 		}
 		if (markerCount === 3) {
-			this._markers[0].on('click', this._closeShape, this);
+			L.DomEvent.addListener(this._markers[0]._icon, 'mouseup', this._onMarkerMouseUp0, this);
+			L.DomEvent.addListener(this._markers[0]._icon, 'touchend', this._onMarkerMouseUp0, this);
 		}
-
+	},
+	_onMarkerMouseUp0: function (e) {
+		e.preventDefault();
+		this._closeShape();
 	},
 	_closeShape: function () {
 		this.Poly = L.Polygon;
 		this._finishShape();
 		this.Poly = L.Polyline;
+	},
+	_cleanUpShape: function () {
+		if (this._markers.length > 1) {
+			L.DomEvent.removeListener(this._markers[this._markers.length - 1]._icon, 'mouseup', this._onMarkerMouseUp);
+			L.DomEvent.removeListener(this._markers[this._markers.length - 1]._icon, 'touchend', this._onMarkerMouseUp);
+		}
+		if (this._markers.length > 2) {
+			L.DomEvent.removeListener(this._markers[0]._icon, 'mouseup', this._onMarkerMouseUp0);
+			L.DomEvent.removeListener(this._markers[0]._icon, 'touchend', this._onMarkerMouseUp0);
+		}
 	}
+
 });
 
 L.Draw.Window = L.Draw.Polyline.extend({
@@ -1625,7 +1950,7 @@ L.Draw.Window = L.Draw.Polyline.extend({
 			timeout: 2500
 		},
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		}),
 		guidelineDistance: 20,
@@ -1658,7 +1983,8 @@ L.Draw.Window = L.Draw.Polyline.extend({
 		// The last marker should have a click handler to close the polyline
 		// Remove the old marker click handler (as only the last point should close the polyline)
 		if (markerCount > 1) {
-			this._markers[markerCount - 1].on('click', this._finishShape, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'mouseup', this._onMarkerMouseUp, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'touchend', this._onMarkerMouseUp, this);
 //allow only two-points lines
 			this._finishShape();
 		}
@@ -1680,7 +2006,7 @@ L.Draw.Door = L.Draw.Polyline.extend({
 			timeout: 2500
 		},
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		}),
 		guidelineDistance: 20,
@@ -1711,7 +2037,8 @@ L.Draw.Door = L.Draw.Polyline.extend({
 		// The last marker should have a click handler to close the polyline
 		// Remove the old marker click handler (as only the last point should close the polyline)
 		if (markerCount > 1) {
-			this._markers[markerCount - 1].on('click', this._finishShape, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'mouseup', this._onMarkerMouseUp, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'touchend', this._onMarkerMouseUp, this);
 //allow only two-points lines
 			this._finishShape();
 		}
@@ -1804,7 +2131,7 @@ L.Edit = L.Edit || {};
 L.Edit.Poly = L.Handler.extend({
 	options: {
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		})
 	},
@@ -1872,7 +2199,7 @@ L.Edit.Poly = L.Handler.extend({
 			markerLeft = this._markers[j];
 			markerRight = this._markers[i];
 
-			this._createMiddleMarker(markerLeft, markerRight);
+			if (this._poly.options.layerType === 'wall') { this._createMiddleMarker(markerLeft, markerRight); }
 			this._updatePrevNext(markerLeft, markerRight);
 		}
 	},
@@ -1955,7 +2282,6 @@ L.Edit.Poly = L.Handler.extend({
 		// create a ghost marker in place of the removed one
 		if (marker._prev && marker._next) {
 			this._createMiddleMarker(marker._prev, marker._next);
-
 		} else if (!marker._prev) {
 			marker._next._middleLeft = null;
 
@@ -3870,13 +4196,16 @@ L.EditToolbar.Edit = L.Handler.extend({
 
 			this._featureGroup.eachLayer(this._enableLayerEdit, this);
 
-			this._tooltip = new L.Tooltip(this._map);
-			this._tooltip.updateContent({
-				text: L.drawLocal.edit.handlers.edit.tooltip.text,
-				subtext: L.drawLocal.edit.handlers.edit.tooltip.subtext
-			});
+//			this._tooltip = new L.Tooltip(this._map);
+//			this._tooltip.updateContent({
+//				text: L.drawLocal.edit.handlers.edit.tooltip.text,
+//				subtext: L.drawLocal.edit.handlers.edit.tooltip.subtext
+//			});
+//
+//			this._map.on('mousemove', this._onMouseMove, this);
 
-			this._map.on('mousemove', this._onMouseMove, this);
+			this._map.dragging.disable();
+
 		}
 	},
 
@@ -3888,10 +4217,13 @@ L.EditToolbar.Edit = L.Handler.extend({
 			// Clear the backups of the original layers
 			this._uneditedLayerProps = {};
 
-			this._tooltip.dispose();
-			this._tooltip = null;
+//			this._tooltip.dispose();
+//			this._tooltip = null;
+//
+//			this._map.off('mousemove', this._onMouseMove, this);
 
-			this._map.off('mousemove', this._onMouseMove, this);
+			if (this._map.options.dragging) { this._map.dragging.enable(); }
+
 		}
 	},
 
@@ -3991,9 +4323,9 @@ L.EditToolbar.Edit = L.Handler.extend({
 		delete layer.options.original;
 	},
 
-	_onMouseMove: function (e) {
-		this._tooltip.updatePosition(e.latlng);
-	},
+//	_onMouseMove: function (e) {
+//		this._tooltip.updatePosition(e.latlng);
+//	},
 
 	_hasAvailableLayers: function () {
 		return this._featureGroup.getLayers().length !== 0;
@@ -4069,10 +4401,10 @@ L.EditToolbar.Delete = L.Handler.extend({
 			this._deletableLayers.eachLayer(this._enableLayerDelete, this);
 			this._deletedLayers = new L.LayerGroup();
 
-			this._tooltip = new L.Tooltip(this._map);
-			this._tooltip.updateContent({ text: L.drawLocal.edit.handlers.remove.tooltip.text });
+//			this._tooltip = new L.Tooltip(this._map);
+//			this._tooltip.updateContent({ text: L.drawLocal.edit.handlers.remove.tooltip.text });
 
-			this._map.on('mousemove', this._onMouseMove, this);
+//			this._map.on('mousemove', this._onMouseMove, this);
 
 			if (!this._markerGroup) { this._initMarkers(); }
 			this._map.addLayer(this._markerGroup);
@@ -4084,10 +4416,10 @@ L.EditToolbar.Delete = L.Handler.extend({
 			this._deletableLayers.eachLayer(this._disableLayerDelete, this);
 			this._deletedLayers = null;
 
-			this._tooltip.dispose();
-			this._tooltip = null;
-
-			this._map.off('mousemove', this._onMouseMove, this);
+//			this._tooltip.dispose();
+//			this._tooltip = null;
+//  
+//			this._map.off('mousemove', this._onMouseMove, this);
 
 			this._map.removeLayer(this._markerGroup);
 			delete this._markerGroup;
@@ -4133,9 +4465,9 @@ L.EditToolbar.Delete = L.Handler.extend({
 		layer.fire('deleted');
 	},
 
-	_onMouseMove: function (e) {
-		this._tooltip.updatePosition(e.latlng);
-	},
+//	_onMouseMove: function (e) {
+//		this._tooltip.updatePosition(e.latlng);
+//	},
 
 	_hasAvailableLayers: function () {
 		return this._deletableLayers.getLayers().length !== 0;
@@ -4274,8 +4606,6 @@ L.Handler.MarkerSnap = L.Handler.extend({
         return this._guides;
     },
     _snapMarker: function (e) {
-//        console.log({_this: this, e: e});
-
         var marker = e.target,
             latlng = marker.getLatLng(),
             snaplist = [],
@@ -4469,7 +4799,7 @@ L.Draw.Feature.SnapMixin = {
             var markerCount = this._markers.length,
                 marker = this._markers[markerCount - 1];
             if (this._mouseMarker.snap) {
-                if (e) {
+                if (e && marker) {
                   // update the feature being drawn to reflect the snapped location:
                     marker.setLatLng(e.target._latlng);
                     if (this._poly) {
@@ -4477,9 +4807,8 @@ L.Draw.Feature.SnapMixin = {
                         this._poly._latlngs[polyPointsCount - 1] = e.target._latlng;
                         this._poly.redraw();
                     }
+                    if (marker._icon) { L.DomUtil.addClass(marker._icon, 'marker-snapped'); }
                 }
-
-                L.DomUtil.addClass(marker._icon, 'marker-snapped');
             }
         }
     },
@@ -4502,7 +4831,8 @@ L.Control.GraphicScale = L.Control.extend({
         minUnitWidth: 30,
         maxUnitsWidth: 240,
         fill: 'fill',
-        showSubunits: true,
+//        showSubunits: true,
+        showSubunits: false,
         doubleLine: false,
         labelPlacement: 'auto'
     },
@@ -5036,7 +5366,6 @@ L.SimpleGraticule = L.LayerGroup.extend({
         var lines = new Array(counts.x + counts.y);
         var labels = new Array(counts.x + counts.y);
 
-
         var coslat = Math.cos(this._bounds.getCenter().lat * Math.PI / 180);
         var halfWorldMeters = 6378137 * Math.PI;
 
@@ -5048,18 +5377,19 @@ L.SimpleGraticule = L.LayerGroup.extend({
         for (var i = 0; i <= counts.x; i++) {
             var x = (mins.x + (i) * sx);
             lines[i] = this.buildXLine(x);
-            if (!this.options.showOriginLabel) { labels[i] = this.buildLabel('gridlabel-horiz', x); }
+            if (this.options.showOriginLabel) { labels[i] = this.buildLabel('gridlabel-horiz', x); }
         }
 
         //for vertical lines
         for (var j = 0; j <= counts.y; j++) {
             var y = (mins.y + (j) * sy);
             lines[j + i] = this.buildYLine(y);
-            if (!this.options.showOriginLabel) { labels[j + i] = this.buildLabel('gridlabel-vert', y); }
+            if (this.options.showOriginLabel) { labels[j + i] = this.buildLabel('gridlabel-vert', y); }
         }
 
         lines.forEach(this.addLayer, this);
-        if (!this.options.showOriginLabel) { labels.forEach(this.addLayer, this); }
+        if (this.options.showOriginLabel) { labels.forEach(this.addLayer, this); }
+        this.eachLayer(function (layer) { layer.bringToBack(); });
     },
 
     buildXLine: function (x) {
@@ -5235,7 +5565,6 @@ L.SnapGrid = L.LayerGroup.extend({
         var lines = new Array(counts.x + counts.y);
         var labels = new Array(counts.x + counts.y);
 
-
         var coslat = Math.cos(this._bounds.getCenter().lat * Math.PI / 180);
         var halfWorldMeters = 6378137 * Math.PI;
 
@@ -5247,18 +5576,19 @@ L.SnapGrid = L.LayerGroup.extend({
         for (var i = 0; i <= counts.x; i++) {
             var x = (mins.x + (i) * sx);
             lines[i] = this.buildXLine(x);
-            if (!this.options.showOriginLabel) { labels[i] = this.buildLabel('gridlabel-horiz', x); }
+            if (this.options.showOriginLabel) { labels[i] = this.buildLabel('gridlabel-horiz', x); }
         }
 
         //for vertical lines
         for (var j = 0; j <= counts.y; j++) {
             var y = (mins.y + (j) * sy);
             lines[j + i] = this.buildYLine(y);
-            if (!this.options.showOriginLabel) { labels[j + i] = this.buildLabel('gridlabel-vert', y); }
+            if (this.options.showOriginLabel) { labels[j + i] = this.buildLabel('gridlabel-vert', y); }
         }
 
         lines.forEach(this.addLayer, this);
         if (this.options.showOriginLabel) { labels.forEach(this.addLayer, this); }
+        this.eachLayer(function (layer) { layer.bringToBack(); });
     },
 
     buildXLine: function (x) {
@@ -5909,64 +6239,76 @@ L.Control.SlideMenu = L.Control.extend({
         }
 
         this._container = L.DomUtil.create('div', 'leaflet-control-slidemenu leaflet-bar leaflet-control');
-        var link = L.DomUtil.create('a', 'leaflet-bar-part leaflet-bar-part-single', this._container);
-        link.title = 'Menu';
+        this.showlink = L.DomUtil.create('a', 'leaflet-bar-part leaflet-bar-part-single', this._container);
+        this.showlink.title = 'Menu';
 
         if (this.options.menuButtonIcon.length > 0) {
-            L.DomUtil.create('span', 'fa ' + this.options.menuButtonIcon, link);
+            L.DomUtil.create('span', 'fa ' + this.options.menuButtonIcon, this.showlink);
         } else {
-            L.DomUtil.create('span', 'fa fa-bars', link);
+            L.DomUtil.create('span', 'fa fa-bars', this.showlink);
         }
         this._menu = L.DomUtil.create('div', 'leaflet-menu', document.getElementsByClassName('leaflet-container')[0]);
         this._menu.style.width = this.options.width;
         this._menu.style.height = this.options.height;
 
-        var closeButton = L.DomUtil.create('span', 'leaflet-menu-close-button fa', this._menu);
+        this.closeButton = L.DomUtil.create('span', 'leaflet-menu-close-button fa', this._menu);
 
         if (this.options.closeButtonIcon.length > 0) {
             this._isLeftPosition = true;
             this._menu.style.left = '-' + this.options.width;
 /* jshint ignore:start */
-            closeButton.style['float'] = 'right';
+            this.closeButton.style['float'] = 'right';
 /* jshint ignore:end */
-            L.DomUtil.addClass(closeButton, this.options.closeButtonIcon);
+            L.DomUtil.addClass(this.closeButton, this.options.closeButtonIcon);
         } else {
             if (this._isLeftPosition) {
                 this._menu.style.left = '-' + this.options.width;
 /* jshint ignore:start */
-                closeButton.style['float'] = 'right';
+                this.closeButton.style['float'] = 'right';
 /* jshint ignore:end */
-                L.DomUtil.addClass(closeButton, 'fa-chevron-left');
+                L.DomUtil.addClass(this.closeButton, 'fa-chevron-left');
             }
             else {
 /* jshint ignore:start */
-                closeButton.style['float'] = 'left';
+                this.closeButton.style['float'] = 'left';
 /* jshint ignore:end */
                 this._menu.style.right = '-' + this.options.width;
-                L.DomUtil.addClass(closeButton, 'fa-chevron-right');
+                L.DomUtil.addClass(this.closeButton, 'fa-chevron-right');
             }
         }
 
         this._contents = L.DomUtil.create('div', 'leaflet-menu-contents', this._menu);
         this._contents.innerHTML = this._innerHTML;
-
+ 
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[0], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.loadDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.loadDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.loadDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[1], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.saveDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.saveDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.saveDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[2], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.saveSVGDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.saveSVGDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.saveSVGDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[3], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.savePNGDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.savePNGDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.savePNGDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[4], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.saveJPGDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.saveJPGDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.saveJPGDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[5], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.optionsDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.optionsDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.optionsDialog.close(); }
         }, this);
 
 
@@ -5974,14 +6316,20 @@ L.Control.SlideMenu = L.Control.extend({
 
         L.DomEvent.disableClickPropagation(this._menu);
         L.DomEvent
-            .on(link, 'click', L.DomEvent.stopPropagation)
-            .on(link, 'click', function () {
+//            .on(link, 'click', L.DomEvent.stopPropagation)
+            .on(this.showlink, 'click', function () {
                 // Open
+//                e.stopPropagation();
+                this.showlink.style.display = 'none';
+                this.closeButton.style.display = 'block';
                 this._animate(this._menu, this._startPosition, 0, true);
             }, this)
-            .on(closeButton, 'click', L.DomEvent.stopPropagation)
-            .on(closeButton, 'click', function () {
+//            .on(closeButton, 'click', L.DomEvent.stopPropagation)
+            .on(this.closeButton, 'click', function () {
                 // Close
+//                e.stopPropagation();
+                this.showlink.style.display = 'block';
+                this.closeButton.style.display = 'none';
                 this._animate(this._menu, 0, this._startPosition, false);
             }, this);
 
@@ -6061,6 +6409,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 		controlLayerGrp: {},
 		drawnWallsLayerGrp: {},
 		fitBondsAfterLoad: true,
+		showSizeArrows: true,
+		dontShowSmallSizeLabels: 0.5,
 		wallWidth: 0.1,
 		pixelsPerMeter: 100,
 		snapOptions: {
@@ -6164,6 +6514,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		var _WallWidth = this.options.wallWidth * 0.5;
 
+		var _dontShowSmallSizeLabels = this.options.dontShowSmallSizeLabels;
+
 		var wall, controlWall;
 		var roomId = 0, wallId = 0;
 		var i;
@@ -6196,8 +6548,11 @@ L.Control.RSWEIndoor = L.Control.extend({
 			p0, p1, p2, p3,
 			p01, p02, p11, p12, p21, p22, p31, p32,
 			a11, a12, a21, a22,
+			p110, p120, p210, p220,
 			g1, g2, g11, g12, g21, g22,
-			d01, d11, d12, d02, d21, d22;
+			d01, d11, d12, d02, d21, d22,
+			center, center1, heightPoint1, center2, heightPoint2;
+
 		var gapStart, gapEnd, wallType;
 
 		var getRightClickFunc = function (roomId, wallId) { return function () { this.ChangeWallType(roomId, wallId); }; };
@@ -6386,12 +6741,29 @@ L.Control.RSWEIndoor = L.Control.extend({
 				d22 = new L.LatLng(g2.lat - (g2.lng - g1.lng) * ((0.5) * coslat2),
 					g2.lng + (g2.lat - g1.lat) * ((0.5) / coslat2));
 
-				d01 = new L.LatLng(g1.lat + (g2.lng - g11.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (g2.lat - g1.lat) * 0.5,
+				d01 = new L.LatLng(g1.lat + (g2.lng - g1.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (g2.lat - g1.lat) * 0.5,
 					g1.lng - (g2.lat - g1.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (g2.lng - g1.lng) * 0.5);
 
 				d02 = new L.LatLng(g1.lat - (g2.lng - g1.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (g2.lat - g1.lat) * 0.5,
 					g1.lng + (g2.lat - g1.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (g2.lng - g1.lng) * 0.5);
 
+
+
+				p110 = new L.LatLng(p1.lat + (p12.lng - p11.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p12.lat - p11.lat) * 0.25,
+					p1.lng - (p12.lat - p11.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p12.lng - p11.lng) * 0.25);
+				p120 = new L.LatLng(p1.lat - (p11.lng - p12.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p11.lat - p12.lat) * 0.25,
+					p1.lng + (p11.lat - p12.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p11.lng - p12.lng) * 0.25);
+				p210 = new L.LatLng(p2.lat - (p22.lng - p21.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p22.lat - p21.lat) * 0.25,
+					p2.lng + (p22.lat - p21.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p22.lng - p21.lng) * 0.25);
+				p220 = new L.LatLng(p2.lat + (p21.lng - p22.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p21.lat - p22.lat) * 0.25,
+					p2.lng - (p21.lat - p22.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p21.lng - p22.lng) * 0.25);
+
+
+				center1 = new L.LatLng(0.5 * (p11.lat + p21.lat), 0.5 * (p11.lng + p21.lng));
+				center2 = new L.LatLng(0.5 * (p12.lat + p22.lat), 0.5 * (p12.lng + p22.lng));
+				center = new L.LatLng(0.5 * (p1.lat + p2.lat), 0.5 * (p1.lng + p2.lng));
+				heightPoint1 = new L.LatLng(center1.lat + p12.lat - p11.lat, center1.lng + p12.lng - p11.lng);
+				heightPoint2 = new L.LatLng(center2.lat + p11.lat - p12.lat, center2.lng + p11.lng - p12.lng);
 
 				this.options.controlLayerGrp.addLayer(layer);
 
@@ -6404,403 +6776,376 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 //draw one rectangle and four triangles instead of one trapecium
 //to avoid problems for very small angles
-//					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
-//					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-//					controlWall.bringToBack();
-//					roomWalls.push(controlWall);
-//					wall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-//					this.options.drawnWallsLayerGrp.addLayer(wall);
-//					wall.bringToBack();
-//					roomWalls.push(wall);
+////					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+////					this.options.drawnWallsLayerGrp.addLayer(controlWall);
+////					controlWall.bringToBack();
+////					roomWalls.push(controlWall);
+////					wall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+////					this.options.drawnWallsLayerGrp.addLayer(wall);
+////					wall.bringToBack();
+////					roomWalls.push(wall);
 
+
+
+					if (this._map.RSWEIndoor.options.showSizeArrows) {
+						distance =  p2.distanceTo(p1);
+						if (distance > _dontShowSmallSizeLabels) {
+//arrow body
+							controlWall = new L.Polyline([p1, p2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall.options.layerType = 'size-arrows';//'control';
+							this.options.drawnWallsLayerGrp.addLayer(controlWall);
+							roomWalls.push(controlWall);
+//draw sizes
+//arrow ends
+							controlWall = new L.Polygon([p110, p120, p1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall.options.layerType = 'size-arrows';//'control';
+							this.options.drawnWallsLayerGrp.addLayer(controlWall);
+							roomWalls.push(controlWall);
+
+							controlWall = new L.Polygon([p210, p220, p2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall.options.layerType = 'size-arrows';//'control';
+							this.options.drawnWallsLayerGrp.addLayer(controlWall);
+							roomWalls.push(controlWall);
+//lenght scalabletext
+							if (center1.lat > center2.lat) {
+								controlWall = new L.ScalableText(' ' + (distance + 0.001).toFixed(1) + ' m ', center2, center1);
+							} else {
+//reversed
+								controlWall = new L.ScalableText(' ' + (distance + 0.001).toFixed(1) + ' m ', center1, center2);
+							}
+							controlWall.options.layerType = 'size-text';
+							this.options.drawnWallsLayerGrp.addLayer(controlWall);
+							roomWalls.push(controlWall);
+						}
+					}
+
+//rectangle
 					wall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
-
+//corners
 					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
-
+//transparent click layer
 					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 
 				} else if (wallType === 'gap') {
-//					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
-//					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-//					controlWall.bringToBack();
-//					roomWalls.push(controlWall);
-//					wall = new L.polygon([a12, g12, g11, a11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-//					this.options.drawnWallsLayerGrp.addLayer(wall);
-//					wall.bringToBack();
-//					roomWalls.push(wall);
-
+////					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+////					this.options.drawnWallsLayerGrp.addLayer(controlWall);
+////					controlWall.bringToBack();
+////					roomWalls.push(controlWall);
+////					wall = new L.polygon([a12, g12, g11, a11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+////					this.options.drawnWallsLayerGrp.addLayer(wall);
+////					wall.bringToBack();
+////					roomWalls.push(wall);
 
 					wall = new L.Polygon([p12, g12, g11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 
 				} else if (wallType === 'window') {
 					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([g11, g12, g22, g21], {fillColor: '#ffffff', color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 
 					wall = new L.Curve(['M', [g11.lat, g11.lng], 'L', [g21.lat, g21.lng] ],
 						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 					wall = new L.Curve(['M', [g12.lat, g12.lng], 'L', [g22.lat, g22.lng] ],
 						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 					wall = new L.Curve(['M', [g1.lat, g1.lng], 'L', [g2.lat, g2.lng] ],
 						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 
 					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 
 				} else if (wallType === 'door1') {
 					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 
 					wall = new L.Curve(['M', [g1.lat, g1.lng], 'L', [d01.lat, d01.lng], 'Q', [d21.lat, d21.lng], [g2.lat, g2.lng]],
 						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 
 					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 				} else if (wallType === 'door2') {
 					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 
 					wall = new L.Curve(['M', [g1.lat, g1.lng], 'L', [d02.lat, d02.lng], 'Q', [d22.lat, d22.lng], [g2.lat, g2.lng]],
 						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 
 					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 				} else if (wallType === 'door3') {
 					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 
 					wall = new L.Curve(['M', [g2.lat, g2.lng], 'L', [d01.lat, d01.lng], 'Q', [d11.lat, d11.lng], [g1.lat, g1.lng]],
 						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 
 					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.options.layerType = 'control';
-					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 				} else if (wallType === 'door4') {
 					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToBack();
 					roomWalls.push(wall);
 
 					wall = new L.Polygon([g11, g12, g22, g21], {color: '#dddddd', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 
 					wall = new L.Curve(['M', [g2.lat, g2.lng], 'L', [d02.lat, d02.lng], 'Q', [d12.lat, d12.lng], [g1.lat, g1.lng]],
 						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
-					wall.bringToFront();
 					roomWalls.push(wall);
 
 					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-					controlWall.bringToFront();
 					roomWalls.push(controlWall);
 				}
 
 				this.options.controlLayerGrp.bringToBack();
 
-				controlWall.on('contextmenu', getRightClickFunc(roomId, wallId), this);
+				if (controlWall) { controlWall.on('contextmenu', getRightClickFunc(roomId, wallId), this); }
 //dont' use wall property dialogs
 //				wall.on('contextmenu', rightClickFunc, roomWallsPropsItem.dlgRoomProps);
 
@@ -6812,7 +7157,12 @@ L.Control.RSWEIndoor = L.Control.extend({
 			this.options.layers[roomId] = {controlLayer: layer, roomWalls: roomWalls};
 		}
 
-		this.options.drawnWallsLayerGrp.addTo(this._map);
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'size-arrows') { layer.bringToFront(); } });
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'size-text') { layer.bringToFront(); } });
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'window') { layer.bringToFront(); } });
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'door') { layer.bringToFront(); } });
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'control') { layer.bringToFront(); } });
+
 	},
 	ChangeWallType: function (roomId, wallId) {
 		if (!this.options.layers[roomId].controlLayer) { return; }
@@ -6949,79 +7299,155 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		if (isEmpty) { return ''; }
 
-		var bds = this.options.drawnWallsLayerGrp.getBounds();
+		var bnds = this.options.drawnWallsLayerGrp.getBounds();
 
-		var coslat = Math.cos(bds.getCenter().lat * Math.PI / 180);
+		var coslat = Math.cos(bnds.getCenter().lat * Math.PI / 180);
 		var halfWorldMeters = 6378137 * Math.PI;
 
 		var s = 1.0 / this.options.pixelsPerMeter;
 		var sx = s * 180 / (halfWorldMeters * coslat);
 		var sy = s * 180 / halfWorldMeters;
 
-		var lngToPixelX = function (lng) { return Math.round((lng - bds.getWest()) / (sx)); };
-		var latToPixelY = function (lat) { return Math.round((-lat + bds.getNorth()) / (sy)); };
+		var lngToPixelX = function (lng) { return Math.round((lng - bnds.getWest()) / (sx)); };
+		var latToPixelY = function (lat) { return Math.round((-lat + bnds.getNorth()) / (sy)); };
 
+		var self = this;
 		var outSVG = '';
-		outSVG += '<svg width="' + (lngToPixelX(bds.getEast()) + 1) +
-			 '" height="' + (latToPixelY(bds.getSouth()) + 1) +
+		outSVG += '<svg width="' + (lngToPixelX(bnds.getEast()) + 1) +
+			 '" height="' + (latToPixelY(bnds.getSouth()) + 1) +
 			 '" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">\r\n';
-		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
-			var p;
-			var d = '', d1 = '';
-			if (layer.options.opacity === 0) { return; }
-			if (layer.options.layerType === 'control') { return; }
-			var outLayer = '<g><path ';
 
-			for (var key in layer._path.attributes) {
-				if (layer._path.attributes.hasOwnProperty(key)) {
-					var name = layer._path.attributes[key].name;
-					var value = layer._path.attributes[key].value;
-					if ((name === 'fill') && (layer instanceof L.Polygon) && layer.options.layerType === 'door') { value = '#ffffff'; }
-					if ((name === 'stroke-opacity') && (layer instanceof L.Polygon)) { value = '0'; }
-					if (name !== 'class' && name !== 'd') { outLayer += ' ' + name + '="' + value + '"'; }
-				}
-			}
-//set d attrribute
-			if (layer instanceof L.Polygon) {
-//we fill two overlapped poligons translated to 1 pixel cause preventing rasterization effects
-				for (var j = 0, len2 = layer._latlngs.length; j < len2; j++) {
-					p = layer._latlngs[j];
-					d += (j ? ' L' : 'M') + lngToPixelX(p.lng) + ' ' + latToPixelY(p.lat);
-					d1 += (j ? ' L' : 'M') + (lngToPixelX(p.lng) + 1) + ' ' + (latToPixelY(p.lat) + 1);
-				}
-				d += ' Z';
-				d1 += ' Z';
-				outSVG += outLayer + ' d="' + d + '"' + '/></g>\r\n';
-				outSVG += outLayer + ' d="' + d1 + '"' + '/></g>\r\n';
-			}
-			if (layer instanceof L.Curve) {
-				var curCommand;
-				for (var i = 0; i < layer._coords.length; i++) {
-					p = layer._coords[i];
-					if (typeof p === 'string' || p instanceof String) {
-						curCommand = p;
-						d += ' ' + curCommand;
-					} else {
-						switch (curCommand) {
-							case 'H':
-								d += '' + latToPixelY(p[0]) + '.5 ';
-								break;
-							case 'V':
-								d += lngToPixelX(p[1]) + '.5 ';
-								break;
-							default:
-								d += lngToPixelX(p[1]) + '.5 ' + latToPixelY(p[0]) + '.5 ';
-								break;
-						}
-					}
-				}
-				outSVG += outLayer + ' d="' + d + '"' + '/></g>\r\n';
-			}
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'wall') { outSVG += self.layerToSVG(layer); }
+		});
+
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'size-arrows') { outSVG += self.layerToSVG(layer); }
+		});
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'size-text') { outSVG += self.layerToSVG(layer); }
+		});
+
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'window') { outSVG += self.layerToSVG(layer); }
+		});
+
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'door') { outSVG += self.layerToSVG(layer); }
 		});
 
 		outSVG += '</svg>';
-
 		return outSVG;
+
+	},
+	layerToSVG: function (layer) {
+		var bnds = this.options.drawnWallsLayerGrp.getBounds();
+		var coslat = Math.cos(bnds.getCenter().lat * Math.PI / 180);
+		var halfWorldMeters = 6378137 * Math.PI;
+		var s = 1.0 / this.options.pixelsPerMeter;
+		var sx = s * 180 / (halfWorldMeters * coslat);
+		var sy = s * 180 / halfWorldMeters;
+		var lngToPixelX = function (lng) { return Math.round((lng - bnds.getWest()) / (sx)); };
+		var latToPixelY = function (lat) { return Math.round((-lat + bnds.getNorth()) / (sy)); };
+		var i, len2, p;
+		var d = '', d1 = '';
+		if (layer.options.opacity === 0) { return; }
+		if (layer.options.layerType === 'control') { return; }
+		var outLayer = '', attributes = '';
+
+		for (var key in layer._path.attributes) {
+			if (layer._path.attributes.hasOwnProperty(key)) {
+				var name = layer._path.attributes[key].name;
+				var value = layer._path.attributes[key].value;
+				if ((name === 'fill') && (layer instanceof L.Polygon) && layer.options.layerType === 'door') { value = '#ffffff'; }
+				if ((name === 'stroke-opacity') && (layer instanceof L.Polygon)) { value = '0'; }
+				if (name !== 'class' && name !== 'd') { attributes += ' ' + name + '="' + value + '"'; }
+			}
+		}
+//set d attrribute
+		if (layer instanceof L.Polygon &&
+			 (layer.options.layerType === 'wall' ||
+			 layer.options.layerType === 'window' ||
+			 layer.options.layerType === 'door')) {
+//we fill two overlapped poligons translated to 1 pixel cause preventing rasterization effects
+			for (i = 0, len2 = layer._latlngs.length; i < len2; i++) {
+				p = layer._latlngs[i];
+				d += (i ? ' L' : 'M') + lngToPixelX(p.lng) + ' ' + latToPixelY(p.lat);
+				d1 += (i ? ' L' : 'M') + (lngToPixelX(p.lng) + 1) + ' ' + (latToPixelY(p.lat) + 1);
+			}
+			d += ' Z';
+			d1 += ' Z';
+			outLayer += '<g><path ' + attributes + ' d="' + d + '"' + '/></g>\r\n';
+			outLayer += '<g><path ' + attributes + ' d="' + d1 + '"' + '/></g>\r\n';
+			return outLayer;
+		}
+		if (layer instanceof L.Polygon && layer.options.layerType === 'size-arrows') {
+//we fill two overlapped poligons translated to 1 pixel cause preventing rasterization effects
+			for (i = 0, len2 = layer._latlngs.length; i < len2; i++) {
+				p = layer._latlngs[i];
+				d += (i ? ' L' : 'M') + lngToPixelX(p.lng) + '.5 ' + latToPixelY(p.lat) + '.5';
+			}
+			d += ' Z';
+			outLayer += '<g><path ' + attributes + ' d="' + d + '"' + '/></g>\r\n';
+			return outLayer;
+		}
+		if (!(layer instanceof L.Polygon) && layer instanceof L.Polyline) {
+//			if (layer instanceof L.Polyline) {
+//we fill two overlapped poligons translated to 1 pixel cause preventing rasterization effects
+			for (i = 0, len2 = layer._latlngs.length; i < len2; i++) {
+				p = layer._latlngs[i];
+				d += (i ? ' L' : 'M') + lngToPixelX(p.lng) + '.5' + ' ' + latToPixelY(p.lat) + '.5';
+			}
+			outLayer = '<g><path ' + attributes + ' d="' + d + '"' + '/></g>\r\n';
+			return outLayer;
+		}
+		if (layer instanceof L.Curve) {
+			var curCommand;
+			for (i = 0; i < layer._coords.length; i++) {
+				p = layer._coords[i];
+				if (typeof p === 'string' || p instanceof String) {
+					curCommand = p;
+					d += ' ' + curCommand;
+				} else {
+					switch (curCommand) {
+						case 'H':
+							d += '' + latToPixelY(p[0]) + '.5 ';
+							break;
+						case 'V':
+							d += lngToPixelX(p[1]) + '.5 ';
+							break;
+						default:
+							d += lngToPixelX(p[1]) + '.5 ' + latToPixelY(p[0]) + '.5 ';
+							break;
+					}
+				}
+			}
+			outLayer = '<g><path ' + attributes + ' d="' + d + '"' + '/></g>\r\n';
+			return outLayer;
+		}
+		if (layer instanceof L.ScalableText) {
+			var fontSize = layer._textNode.getAttribute('font-size').replace('px', '');
+			var textWidth = layer._textNode.getComputedTextLength();
+
+			var coslat1 = Math.cos(layer.bindPoint.lat * Math.PI / 180);
+
+			var rotateAngle1 = Math.atan2(-layer.bindPoint.lat + layer.heightPoint.lat,
+				(layer.bindPoint.lng - layer.heightPoint.lng) * coslat1) * 180 / Math.PI - 90;
+
+			var transform = 'translate('  + lngToPixelX(layer.bindPoint.lng)  + '.5' +
+			' ' + latToPixelY(layer.bindPoint.lat) + '.5' + ')' +
+//				' scale(' + scaleH + ') '
+			' rotate(' + rotateAngle1 + ')';
+
+			if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
+
+			outLayer = '<g><g transform="' + transform + '">' +
+				'<rect x="-2" y="-10" height="10" fill="black" width="' + textWidth * 12 / fontSize  + '"/>' +
+				'<text fill="white" text-anchor="start" y="-1" font-size="12px" font-family="Arial">' +
+				layer._text + '</text></g></g>\r\n';
+			return outLayer;
+		}
+		return outLayer;
 	},
 	getData: function () {
 		var data = {
@@ -7090,6 +7516,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 		if (!map) { throw new Error('Leaflet has not properly initialized'); }
 
 		var layer;
+
+		map.doubleClickZoom.disable();
 
 		map.RSWEIndoor.options.controlLayerGrp = map.drawControl._toolbars.edit.options.featureGroup;
 
@@ -7163,15 +7591,15 @@ L.Control.RSWEIndoor = L.Control.extend({
 						layer.snapediting._snapper._guides = map.RSWEIndoor.options.snapOptions.snapLayersArray;
 						layer.snapediting._snapper.options.gridStep = map.RSWEIndoor.options.snapOptions.gridStep;
 
-						if (layer.layerType === 'wall') {
+						if (layer.options.layerType === 'wall') {
 							layer.snapediting._snapper.options.snapToGrid = map.RSWEIndoor.options.snapOptions.snapWallsToGrid;
 							layer.snapediting._snapper.options.snapToObjects = map.RSWEIndoor.options.snapOptions.snapWallsToObjects;
 						}
-						if (layer.layerType === 'window') {
+						if (layer.options.layerType === 'window') {
 							layer.snapediting._snapper.options.snapToGrid = map.RSWEIndoor.options.snapOptions.snapWindowsToGrid;
 							layer.snapediting._snapper.options.snapToObjects = map.RSWEIndoor.options.snapOptions.snapWindowsToObjects;
 						}
-						if (layer.layerType === 'door') {
+						if (layer.options.layerType === 'door') {
 							layer.snapediting._snapper.options.snapToGrid = map.RSWEIndoor.options.snapOptions.snapDoorsToGrid;
 							layer.snapediting._snapper.options.snapToObjects = map.RSWEIndoor.options.snapOptions.snapDoorsToObjects;
 						}
@@ -7593,8 +8021,8 @@ L.control.dialog = function (options) {
 
 L.Control.Dialog.Options = L.Control.Dialog.extend({
 	options: {
-		size: [ 300, 300 ],
-		minSize: [ 100, 100 ],
+		size: [ 320, 190 ],
+		minSize: [ 320, 190 ],
 		maxSize: [ 350, 350 ],
 		anchor: [ 50, 50 ],
 		position: 'topleft',
@@ -7643,8 +8071,8 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 
 //init dialog size and position
 		this.options.size = [ Math.floor(0.6 * mapSize.x), Math.floor(0.6 * mapSize.y) ];
-		this.options.maxSize = [ Math.floor(0.6 * mapSize.x), Math.floor(0.6 * mapSize.y) ];
-		this.options.anchor = [ Math.floor(0.2 * mapSize.x), Math.floor(0.2 * mapSize.y) ];
+		this.options.size = [ Math.max(this.options.size[0], this.options.minSize[0]), Math.max(this.options.size[1], this.options.minSize[1]) ];
+		this.options.anchor = [ Math.floor(0.5 * (mapSize.x - this.options.size[0])), Math.floor(0.5 * (mapSize.y - this.options.size[1])) ];
 
 		this._isOpen = false;
 
@@ -7746,7 +8174,7 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 			}
 
 			if (this._map.RSWEIndoor.options.fitBondsAfterLoad !== undefined) {
-				elem = L.DomUtil.create('div', 'display-graphicscale-control');
+				elem = L.DomUtil.create('div', 'display-fitbonds-control');
 				tab.appendChild(elem);
 				if (this._map.RSWEIndoor.options.fitBondsAfterLoad === true) {
 					elem.innerHTML =
@@ -7760,6 +8188,45 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 						this._map.RSWEIndoor.options.fitBondsAfterLoad = true;
 					} else {
 						this._map.RSWEIndoor.options.fitBondsAfterLoad = false;
+					}
+				}, this);
+			}
+
+			if (this._map.RSWEIndoor.options.showSizeArrows !== undefined) {
+				elem = L.DomUtil.create('div', 'display-showSizeArrows-control');
+				tab.appendChild(elem);
+				if (this._map.RSWEIndoor.options.showSizeArrows === true) {
+					elem.innerHTML =
+						'<label><input type="checkbox" checked name="showSizeArrows" value="1" />Show Size Arrows</label>';
+				} else {
+					elem.innerHTML =
+						'<label><input type="checkbox" name="showSizeArrows" value="1" />Show Size Arrows</label>';
+				}
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.checked) {
+						this._map.RSWEIndoor.options.showSizeArrows = true;
+					} else {
+						this._map.RSWEIndoor.options.showSizeArrows = false;
+					}
+					this._map.fire('redraw:all');
+				}, this);
+			}
+			if (this._map.RSWEIndoor.options.dontShowSmallSizeLabels !== undefined) {
+				elem = L.DomUtil.create('div', 'dontShowSmallSizeLabels-control');
+				tab.appendChild(elem);
+				elem.innerHTML = '<label><input type="text" name="dontShowSmallSizeLabels" />' +
+					' Dont Show Wall Size Labels Smaller Than(meters)</label>';
+				elem.firstChild.firstElementChild.setAttribute('value', this._map.RSWEIndoor.options.dontShowSmallSizeLabels);
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.value) {
+						var val = evt.target.value.replace(new RegExp(',', 'g'), '.');
+						if (!isNaN(val)) {
+							this._map.RSWEIndoor.options.dontShowSmallSizeLabels = val;
+							evt.target.value = val;
+							this._map.fire('redraw:all');
+						} else {
+							evt.target.value = this._map.RSWEIndoor.options.dontShowSmallSizeLabels;
+						}
 					}
 				}, this);
 			}
@@ -7811,7 +8278,7 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 			if (this._map.RSWEIndoor.options.snapOptions.gridStep !== undefined) {
 				elem = L.DomUtil.create('div', 'snap-grid-step-options-control');
 				tab.appendChild(elem);
-				elem.innerHTML = '<label><input type="text" name=snapgridstep" /> Snap Grid Step (meters)</label>';
+				elem.innerHTML = '<label><input type="text" name=snapgridstep" />Snap Grid Step (meters)</label>';
 				elem.firstChild.firstElementChild.setAttribute('value', this._map.RSWEIndoor.options.snapOptions.gridStep);
 				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
 					if (evt.target.value) {
@@ -7971,8 +8438,8 @@ L.control.dialog.options = function (options) {
 
 L.Control.Dialog.Load = L.Control.Dialog.extend({
 	options: {
-		size: [ 300, 300 ],
-		minSize: [ 100, 100 ],
+		size: [ 300, 150 ],
+		minSize: [ 300, 150 ],
 		maxSize: [ 350, 350 ],
 		anchor: [ 50, 50 ],
 		position: 'topleft',
@@ -8022,8 +8489,8 @@ L.Control.Dialog.Load = L.Control.Dialog.extend({
 
 //init dialog size and position
 		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+		this.options.size = [ Math.max(this.options.size[0], this.options.minSize[0]), Math.max(this.options.size[1], this.options.minSize[1]) ];
+		this.options.anchor = [ Math.floor(0.5 * (mapSize.x - this.options.size[0])), Math.floor(0.5 * (mapSize.y - this.options.size[1])) ];
 
 		this._isOpen = false;
 
@@ -8137,8 +8604,8 @@ L.control.dialog.load = function (options) {
 
 L.Control.Dialog.Save = L.Control.Dialog.extend({
 	options: {
-		size: [ 300, 300 ],
-		minSize: [ 100, 100 ],
+		size: [ 320, 200 ],
+		minSize: [ 320, 200 ],
 		maxSize: [ 350, 350 ],
 		anchor: [ 50, 50 ],
 		position: 'topleft',
@@ -8187,8 +8654,8 @@ L.Control.Dialog.Save = L.Control.Dialog.extend({
 
 //init dialog size and position
 		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+		this.options.size = [ Math.max(this.options.size[0], this.options.minSize[0]), Math.max(this.options.size[1], this.options.minSize[1]) ];
+		this.options.anchor = [ Math.floor(0.5 * (mapSize.x - this.options.size[0])), Math.floor(0.5 * (mapSize.y - this.options.size[1])) ];
 
 		this._isOpen = false;
 
@@ -8278,8 +8745,8 @@ L.control.dialog.save = function (options) {
 
 L.Control.Dialog.SaveSVG = L.Control.Dialog.extend({
 	options: {
-		size: [ 300, 300 ],
-		minSize: [ 100, 100 ],
+		size: [ 320, 200 ],
+		minSize: [ 320, 200 ],
 		maxSize: [ 350, 350 ],
 		anchor: [ 50, 50 ],
 		position: 'topleft',
@@ -8328,8 +8795,8 @@ L.Control.Dialog.SaveSVG = L.Control.Dialog.extend({
 
 //init dialog size and position
 		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+		this.options.size = [ Math.max(this.options.size[0], this.options.minSize[0]), Math.max(this.options.size[1], this.options.minSize[1]) ];
+		this.options.anchor = [ Math.floor(0.5 * (mapSize.x - this.options.size[0])), Math.floor(0.5 * (mapSize.y - this.options.size[1])) ];
 
 		this._isOpen = false;
 
@@ -8419,8 +8886,8 @@ L.control.dialog.save = function (options) {
 
 L.Control.Dialog.SavePNG = L.Control.Dialog.extend({
 	options: {
-		size: [ 300, 300 ],
-		minSize: [ 100, 100 ],
+		size: [ 320, 200 ],
+		minSize: [ 320, 200 ],
 		maxSize: [ 350, 350 ],
 		anchor: [ 50, 50 ],
 		position: 'topleft',
@@ -8469,8 +8936,8 @@ L.Control.Dialog.SavePNG = L.Control.Dialog.extend({
 
 //init dialog size and position
 		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+		this.options.size = [ Math.max(this.options.size[0], this.options.minSize[0]), Math.max(this.options.size[1], this.options.minSize[1]) ];
+		this.options.anchor = [ Math.floor(0.5 * (mapSize.x - this.options.size[0])), Math.floor(0.5 * (mapSize.y - this.options.size[1])) ];
 
 		this._isOpen = false;
 
@@ -8561,8 +9028,8 @@ L.control.dialog.save = function (options) {
 
 L.Control.Dialog.SaveJPG = L.Control.Dialog.extend({
 	options: {
-		size: [ 300, 300 ],
-		minSize: [ 100, 100 ],
+		size: [ 320, 200 ],
+		minSize: [ 320, 200 ],
 		maxSize: [ 350, 350 ],
 		anchor: [ 50, 50 ],
 		position: 'topleft',
@@ -8611,8 +9078,8 @@ L.Control.Dialog.SaveJPG = L.Control.Dialog.extend({
 
 //init dialog size and position
 		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+		this.options.size = [ Math.max(this.options.size[0], this.options.minSize[0]), Math.max(this.options.size[1], this.options.minSize[1]) ];
+		this.options.anchor = [ Math.floor(0.5 * (mapSize.x - this.options.size[0])), Math.floor(0.5 * (mapSize.y - this.options.size[1])) ];
 
 		this._isOpen = false;
 

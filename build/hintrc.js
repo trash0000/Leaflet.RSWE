@@ -7,6 +7,7 @@
 		"define": true,
 		"map":true,
 		"jQuery":true
+//		"drawnItems":true
 	},
 	"strict": false,
 

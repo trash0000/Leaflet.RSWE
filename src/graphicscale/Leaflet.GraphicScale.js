@@ -5,7 +5,8 @@ L.Control.GraphicScale = L.Control.extend({
         minUnitWidth: 30,
         maxUnitsWidth: 240,
         fill: 'fill',
-        showSubunits: true,
+//        showSubunits: true,
+        showSubunits: false,
         doubleLine: false,
         labelPlacement: 'auto'
     },

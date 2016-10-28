@@ -13,7 +13,7 @@ L.Draw.Wall = L.Draw.Polyline.extend({
 			timeout: 2500
 		},
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		}),
 		guidelineDistance: 20,
@@ -42,18 +42,32 @@ L.Draw.Wall = L.Draw.Polyline.extend({
 
 	_updateStartHandler: function () {
 		var markerCount = 0;
-
 		if (this._markers !== undefined) {
 			markerCount = this._markers.length;
 		}
 		if (markerCount === 3) {
-			this._markers[0].on('click', this._closeShape, this);
+			L.DomEvent.addListener(this._markers[0]._icon, 'mouseup', this._onMarkerMouseUp0, this);
+			L.DomEvent.addListener(this._markers[0]._icon, 'touchend', this._onMarkerMouseUp0, this);
 		}
-
+	},
+	_onMarkerMouseUp0: function (e) {
+		e.preventDefault();
+		this._closeShape();
 	},
 	_closeShape: function () {
 		this.Poly = L.Polygon;
 		this._finishShape();
 		this.Poly = L.Polyline;
+	},
+	_cleanUpShape: function () {
+		if (this._markers.length > 1) {
+			L.DomEvent.removeListener(this._markers[this._markers.length - 1]._icon, 'mouseup', this._onMarkerMouseUp);
+			L.DomEvent.removeListener(this._markers[this._markers.length - 1]._icon, 'touchend', this._onMarkerMouseUp);
+		}
+		if (this._markers.length > 2) {
+			L.DomEvent.removeListener(this._markers[0]._icon, 'mouseup', this._onMarkerMouseUp0);
+			L.DomEvent.removeListener(this._markers[0]._icon, 'touchend', this._onMarkerMouseUp0);
+		}
 	}
+
 });

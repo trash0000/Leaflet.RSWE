@@ -88,8 +88,6 @@ L.Handler.MarkerSnap = L.Handler.extend({
         return this._guides;
     },
     _snapMarker: function (e) {
-//        console.log({_this: this, e: e});
-
         var marker = e.target,
             latlng = marker.getLatLng(),
             snaplist = [],
@@ -283,7 +281,7 @@ L.Draw.Feature.SnapMixin = {
             var markerCount = this._markers.length,
                 marker = this._markers[markerCount - 1];
             if (this._mouseMarker.snap) {
-                if (e) {
+                if (e && marker) {
                   // update the feature being drawn to reflect the snapped location:
                     marker.setLatLng(e.target._latlng);
                     if (this._poly) {
@@ -291,9 +289,8 @@ L.Draw.Feature.SnapMixin = {
                         this._poly._latlngs[polyPointsCount - 1] = e.target._latlng;
                         this._poly.redraw();
                     }
+                    if (marker._icon) { L.DomUtil.addClass(marker._icon, 'marker-snapped'); }
                 }
-
-                L.DomUtil.addClass(marker._icon, 'marker-snapped');
             }
         }
     },

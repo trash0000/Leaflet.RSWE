@@ -67,10 +67,10 @@ L.EditToolbar.Delete = L.Handler.extend({
 			this._deletableLayers.eachLayer(this._enableLayerDelete, this);
 			this._deletedLayers = new L.LayerGroup();
 
-			this._tooltip = new L.Tooltip(this._map);
-			this._tooltip.updateContent({ text: L.drawLocal.edit.handlers.remove.tooltip.text });
+//			this._tooltip = new L.Tooltip(this._map);
+//			this._tooltip.updateContent({ text: L.drawLocal.edit.handlers.remove.tooltip.text });
 
-			this._map.on('mousemove', this._onMouseMove, this);
+//			this._map.on('mousemove', this._onMouseMove, this);
 
 			if (!this._markerGroup) { this._initMarkers(); }
 			this._map.addLayer(this._markerGroup);
@@ -82,10 +82,10 @@ L.EditToolbar.Delete = L.Handler.extend({
 			this._deletableLayers.eachLayer(this._disableLayerDelete, this);
 			this._deletedLayers = null;
 
-			this._tooltip.dispose();
-			this._tooltip = null;
-
-			this._map.off('mousemove', this._onMouseMove, this);
+//			this._tooltip.dispose();
+//			this._tooltip = null;
+//  
+//			this._map.off('mousemove', this._onMouseMove, this);
 
 			this._map.removeLayer(this._markerGroup);
 			delete this._markerGroup;
@@ -131,9 +131,9 @@ L.EditToolbar.Delete = L.Handler.extend({
 		layer.fire('deleted');
 	},
 
-	_onMouseMove: function (e) {
-		this._tooltip.updatePosition(e.latlng);
-	},
+//	_onMouseMove: function (e) {
+//		this._tooltip.updatePosition(e.latlng);
+//	},
 
 	_hasAvailableLayers: function () {
 		return this._deletableLayers.getLayers().length !== 0;

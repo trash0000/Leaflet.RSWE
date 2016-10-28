@@ -23,15 +23,43 @@ var deps = {
 		desc: 'Leaflet.Curve plugin adds L.Curve class with polinomial splines support.',
 		deps: ['Core', 'CommonUI']
 	},
+/*
+	OrientedMarker: {
+		src: [
+			'orientedmarker/orientedmarker.js'
+		],
+		desc: 'Leaflet.OrientedMarker plugin adds orientad text markers to map',
+		deps: ['Core', 'CommonUI']
+	},
 
+	Label: {
+		src: [
+			'label/label.js'
+		],
+		desc: 'Leaflet.Label plugin allows add text markers onto map',
+		deps: ['Core', 'CommonUI']
+	},
+	TextPath: {
+		src: [
+			'textpath/leaflet.textpath.js'
+		],
+		desc: 'Leaflet.TextPath plugin Shows a text along a Polyline..',
+		deps: ['Core', 'CommonUI']
+	},
+*/
+	ScalableText: {
+		src: [
+			'textpath/leaflet.scalabletext.js'
+		],
+		desc: 'Leaflet.ScalableText plugin adds scalable text objects',
+		deps: ['Core', 'CommonUI']
+	},
 
 	Core: {
 		src: [
-
 //this plugin replase standard constants definition
 			'Leaflet.RSWE.js'
 //			'Leaflet.draw.js'
-
 		],
 		desc: 'The core of the plugin. Currently only includes the version.'
 	},

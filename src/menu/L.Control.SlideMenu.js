@@ -42,64 +42,76 @@ L.Control.SlideMenu = L.Control.extend({
         }
 
         this._container = L.DomUtil.create('div', 'leaflet-control-slidemenu leaflet-bar leaflet-control');
-        var link = L.DomUtil.create('a', 'leaflet-bar-part leaflet-bar-part-single', this._container);
-        link.title = 'Menu';
+        this.showlink = L.DomUtil.create('a', 'leaflet-bar-part leaflet-bar-part-single', this._container);
+        this.showlink.title = 'Menu';
 
         if (this.options.menuButtonIcon.length > 0) {
-            L.DomUtil.create('span', 'fa ' + this.options.menuButtonIcon, link);
+            L.DomUtil.create('span', 'fa ' + this.options.menuButtonIcon, this.showlink);
         } else {
-            L.DomUtil.create('span', 'fa fa-bars', link);
+            L.DomUtil.create('span', 'fa fa-bars', this.showlink);
         }
         this._menu = L.DomUtil.create('div', 'leaflet-menu', document.getElementsByClassName('leaflet-container')[0]);
         this._menu.style.width = this.options.width;
         this._menu.style.height = this.options.height;
 
-        var closeButton = L.DomUtil.create('span', 'leaflet-menu-close-button fa', this._menu);
+        this.closeButton = L.DomUtil.create('span', 'leaflet-menu-close-button fa', this._menu);
 
         if (this.options.closeButtonIcon.length > 0) {
             this._isLeftPosition = true;
             this._menu.style.left = '-' + this.options.width;
 /* jshint ignore:start */
-            closeButton.style['float'] = 'right';
+            this.closeButton.style['float'] = 'right';
 /* jshint ignore:end */
-            L.DomUtil.addClass(closeButton, this.options.closeButtonIcon);
+            L.DomUtil.addClass(this.closeButton, this.options.closeButtonIcon);
         } else {
             if (this._isLeftPosition) {
                 this._menu.style.left = '-' + this.options.width;
 /* jshint ignore:start */
-                closeButton.style['float'] = 'right';
+                this.closeButton.style['float'] = 'right';
 /* jshint ignore:end */
-                L.DomUtil.addClass(closeButton, 'fa-chevron-left');
+                L.DomUtil.addClass(this.closeButton, 'fa-chevron-left');
             }
             else {
 /* jshint ignore:start */
-                closeButton.style['float'] = 'left';
+                this.closeButton.style['float'] = 'left';
 /* jshint ignore:end */
                 this._menu.style.right = '-' + this.options.width;
-                L.DomUtil.addClass(closeButton, 'fa-chevron-right');
+                L.DomUtil.addClass(this.closeButton, 'fa-chevron-right');
             }
         }
 
         this._contents = L.DomUtil.create('div', 'leaflet-menu-contents', this._menu);
         this._contents.innerHTML = this._innerHTML;
-
+ 
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[0], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.loadDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.loadDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.loadDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[1], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.saveDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.saveDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.saveDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[2], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.saveSVGDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.saveSVGDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.saveSVGDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[3], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.savePNGDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.savePNGDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.savePNGDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[4], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.saveJPGDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.saveJPGDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.saveJPGDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[5], 'click', function () {
+            var isOpen = this._map.RSWEIndoor.options.dialogs.optionsDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.optionsDialog.open();
+            if (isOpen) { this._map.RSWEIndoor.options.dialogs.optionsDialog.close(); }
         }, this);
 
 
@@ -107,14 +119,20 @@ L.Control.SlideMenu = L.Control.extend({
 
         L.DomEvent.disableClickPropagation(this._menu);
         L.DomEvent
-            .on(link, 'click', L.DomEvent.stopPropagation)
-            .on(link, 'click', function () {
+//            .on(link, 'click', L.DomEvent.stopPropagation)
+            .on(this.showlink, 'click', function () {
                 // Open
+//                e.stopPropagation();
+                this.showlink.style.display = 'none';
+                this.closeButton.style.display = 'block';
                 this._animate(this._menu, this._startPosition, 0, true);
             }, this)
-            .on(closeButton, 'click', L.DomEvent.stopPropagation)
-            .on(closeButton, 'click', function () {
+//            .on(closeButton, 'click', L.DomEvent.stopPropagation)
+            .on(this.closeButton, 'click', function () {
                 // Close
+//                e.stopPropagation();
+                this.showlink.style.display = 'block';
+                this.closeButton.style.display = 'none';
                 this._animate(this._menu, 0, this._startPosition, false);
             }, this);
 

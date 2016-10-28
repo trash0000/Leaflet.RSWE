@@ -13,7 +13,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			timeout: 2500
 		},
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		}),
 		guidelineDistance: 20,
@@ -23,8 +23,8 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			color: '#bbbbbb',
 			weight: 4,
 			opacity: 0.5,
-			fill: false,
-			clickable: true
+			fill: false
+//			clickable: true
 		},
 		metric: true, // Whether to use the metric meaurement system or imperial
 		showLength: true, // Whether to display distance in the tooltip
@@ -36,6 +36,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 	},
 
 	initialize: function (map, options) {
+		this._map = map;
 		// Need to set this here to ensure the correct message is used.
 		this.options.drawError.message = L.drawLocal.draw.handlers.polyline.error;
 
@@ -67,27 +68,51 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			// we can create vertices over other map layers (markers, vector layers). We
 			// also do not want to trigger any click handlers of objects we are clicking on
 			// while drawing.
+
 			if (!this._mouseMarker) {
 				this._mouseMarker = L.marker(this._map.getCenter(), {
 					icon: L.divIcon({
-						className: 'leaflet-mouse-marker',
+						className: 'leaflet-div-icon leaflet-mouse-marker',
 						iconAnchor: [20, 20],
-						iconSize: [40, 40]
+						iconSize: [40, 40],
+						draggable: true
+
 					}),
 					opacity: 0,
 					zIndexOffset: this.options.zIndexOffset
 				});
 			}
 
+			
+
 			this._mouseMarker
-				.on('mousedown', this._onMouseDown, this)
+//				.on('mousedown', this._onMouseDown, this)
+//				.on('touchstart', this._onMouseDown, this)
 				.addTo(this._map);
 
 			this._map
-				.on('mousemove', this._onMouseMove, this)
-				.on('mouseup', this._onMouseUp, this)
+//				.on('mousedown', this._onMouseDown, this)
+//				.on('mousemove', this._onMouseMove, this)
+//				.on('mouseup', this._onMouseUp, this)
+
+//				.on('touchstart', this._onMouseDown, this)
+//				.on('touchmove', this._onMouseMove, this)
+//				.on('touchend', this._onMouseUp, this)
+
 				.on('zoomend', this._onZoomEnd, this);
+
+			L.DomEvent.addListener(this._map._container, 'mousedown', this._onMouseDown, this);
+			L.DomEvent.addListener(this._map._container, 'mousemove', this._onMouseMove, this);
+			L.DomEvent.addListener(this._map._container, 'mouseup', this._onMouseUp, this);
+
+			L.DomEvent.addListener(this._map._container, 'touchstart', this._onMouseDown, this);
+			L.DomEvent.addListener(this._map._container, 'touchmove', this._onMouseMove, this);
+			L.DomEvent.addListener(this._map._container, 'touchend', this._onMouseUp, this);
+
+			this._map.dragging.disable();
+
 		}
+
 	},
 
 	removeHooks: function () {
@@ -100,13 +125,24 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		// remove markers from map
 		this._map.removeLayer(this._markerGroup);
 		delete this._markerGroup;
+
+/*
+		for (var ii = this._markers.count - 1; ii >= 0; ii--) {
+			this._markers[ii].removeEventListener('mousedown', this._onMarkerMouseDown, false);
+			this._markers[ii].removeEventListener('mouseup', this._onMarkerMouseUp, false);
+
+			this._markers[ii].removeEventListener('touchstart', this._onMarkerMouseDown, false);
+			this._markers[ii].removeEventListener('touchend', this._onMarkerMouseUp, false);
+
+		}
+*/
 		delete this._markers;
 
 		this._map.removeLayer(this._poly);
 		delete this._poly;
 
-		this._mouseMarker
-			.off('mousedown', this._onMouseDown, this);
+//		this._mouseMarker
+//			.off('mousedown', this._onMouseDown, this);
 //			.off('mouseup', this._onMouseUp, this);
 		this._map.removeLayer(this._mouseMarker);
 		delete this._mouseMarker;
@@ -115,11 +151,27 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		this._clearGuides();
 
 		this._map
-			.off('mousemove', this._onMouseMove, this)
+//			.off('mousedown', this._onMouseDown, this)
+//			.off('mousemove', this._onMouseMove, this)
+//			.off('mouseup', this._onMouseUp, this)
+
+//			.off('touchstart', this._onMouseDown, this)
+//			.off('touchmove', this._onMouseMove, this)
+//			.off('touchend', this._onMouseUp, this)
+
 			.off('zoomend', this._onZoomEnd, this);
 
-		this._map
-			.off('mouseup', this._onMouseUp, this);
+
+		L.DomEvent.removeListener(this._map._container, 'mousedown', this._onMouseDown);
+		L.DomEvent.removeListener(this._map._container, 'mousemove', this._onMouseMove);
+		L.DomEvent.removeListener(this._map._container, 'mouseup', this._onMouseUp);
+
+		L.DomEvent.removeListener(this._map._container, 'touchstart', this._onMouseDown);
+		L.DomEvent.removeListener(this._map._container, 'touchmove', this._onMouseMove);
+		L.DomEvent.removeListener(this._map._container, 'touchend', this._onMouseUp);
+
+		if (this._map.options.dragging) { this._map.dragging.enable(); }
+
 	},
 
 	deleteLastVertex: function () {
@@ -161,6 +213,10 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 
 		this._vertexChanged(latlng, true);
 	},
+	_onMarkerMouseUp: function (e) {
+		e.preventDefault();
+		this._finishShape();
+	},
 
 	_finishShape: function () {
 		var intersects = this._poly.newLatLngIntersects(this._poly.getLatLngs()[0], true);
@@ -187,19 +243,34 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 	},
 
 	_onMouseMove: function (e) {
+//cause we set handlers directly we need to calculate additional event characteristics 
+		e.preventDefault();
+
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.lastTouch = e.originalEvent.touches[0];
+			this.startTouch = this.lastTouch;
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
 		var newPos = e.layerPoint,
 			latlng = e.latlng;
 
 		this._currentLatLng = latlng;
-		this._updateTooltip(latlng);
-
+		if (!e.originalEvent.touches) {
+			this._updateTooltip(latlng);
+		}
 		// Update the guide line
 		this._updateGuide(newPos);
 
 		// Update the mouse marker position
 		this._mouseMarker.setLatLng(latlng);
 
-		L.DomEvent.preventDefault(e.originalEvent);
 	},
 
 	_vertexChanged: function (latlng, added) {
@@ -215,12 +286,37 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 	},
 
 	_onMouseDown: function (e) {
+		e.preventDefault();
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.startTouch = e.originalEvent.touches[0];
+			this.lastTouch = e.originalEvent.touches[0];
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
 		var originalEvent = e.originalEvent;
 		this._mouseDownOrigin = L.point(originalEvent.clientX, originalEvent.clientY);
 		this._latlngOrigin = e.latlng;
 	},
 
 	_onMouseUp: function (e) {
+		e.preventDefault();
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+//			this.lastTouch = (this.lastTouch) ? this.lastTouch : this.startTouch;
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : this.lastTouch.clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : this.lastTouch.clientY;
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
 		if (this._mouseDownOrigin) {
 			if (this._latlngOrigin) { e.latlng = this._latlngOrigin; }
 
@@ -248,17 +344,22 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		}
 		// The last marker should have a click handler to close the polyline
 		if (markerCount > 1) {
-			this._markers[markerCount - 1].on('click', this._finishShape, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'mouseup', this._onMarkerMouseUp, this);
+			L.DomEvent.addListener(this._markers[markerCount - 1]._icon, 'touchend', this._onMarkerMouseUp, this);
 		}
 		// Remove the old marker click handler (as only the last point should close the polyline)
 		if (markerCount > 2) {
-			this._markers[markerCount - 2].off('click', this._finishShape, this);
+			L.DomEvent.removeListener(this._markers[markerCount - 2]._icon, 'mouseup', this._onMarkerMouseUp);
+			L.DomEvent.removeListener(this._markers[markerCount - 2]._icon, 'touchend', this._onMarkerMouseUp);
 		}
 	},
 
 	_createMarker: function (latlng) {
 		var marker = new L.Marker(latlng, {
 			icon: this.options.icon,
+			className: 'leaflet-div-icon leaflet-editing-icon',
+			draggable: false,
+			clickable: true,
 			zIndexOffset: this.options.zIndexOffset * 2
 		});
 
@@ -395,13 +496,14 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 	},
 
 	_getMeasurementString: function () {
-		var currentLatLng = this._currentLatLng,
-			previousLatLng = this._markers[this._markers.length - 1].getLatLng(),
-			distance;
+		var distance = 0;
+
+		if (this._currentLatLng && this._markers.length > 0) {
+			var currentLatLng = this._currentLatLng, previousLatLng = this._markers[this._markers.length - 1].getLatLng();
 
 		// calculate the distance from the last fixed point to the mouse position
-		distance = this._measurementRunningTotal + currentLatLng.distanceTo(previousLatLng);
-
+			distance = this._measurementRunningTotal + currentLatLng.distanceTo(previousLatLng);
+		}
 		return L.GeometryUtil.readableDistance(distance, this.options.metric);
 	},
 
@@ -446,7 +548,8 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 
 	_cleanUpShape: function () {
 		if (this._markers.length > 1) {
-			this._markers[this._markers.length - 1].off('click', this._finishShape, this);
+			L.DomEvent.removeListener(this._markers[this._markers.length - 1]._icon, 'mouseup', this._onMarkerMouseUp);
+			L.DomEvent.removeListener(this._markers[this._markers.length - 1]._icon, 'touchend', this._onMarkerMouseUp);
 		}
 	},
 

@@ -7,7 +7,7 @@ L.Edit = L.Edit || {};
 L.Edit.Poly = L.Handler.extend({
 	options: {
 		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon'
 		})
 	},
@@ -75,7 +75,7 @@ L.Edit.Poly = L.Handler.extend({
 			markerLeft = this._markers[j];
 			markerRight = this._markers[i];
 
-			this._createMiddleMarker(markerLeft, markerRight);
+			if (this._poly.options.layerType === 'wall') { this._createMiddleMarker(markerLeft, markerRight); }
 			this._updatePrevNext(markerLeft, markerRight);
 		}
 	},
@@ -158,7 +158,6 @@ L.Edit.Poly = L.Handler.extend({
 		// create a ghost marker in place of the removed one
 		if (marker._prev && marker._next) {
 			this._createMiddleMarker(marker._prev, marker._next);
-
 		} else if (!marker._prev) {
 			marker._next._middleLeft = null;
 

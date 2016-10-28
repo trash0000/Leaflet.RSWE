@@ -47,6 +47,8 @@ L.Draw.Circle = L.Draw.SimpleShape.extend({
 	},
 
 	_onMouseMove: function (e) {
+		e.preventDefault();
+
 		var latlng = e.latlng,
 			showRadius = this.options.showRadius,
 			useMetric = this.options.metric,

@@ -1,7 +1,7 @@
 L.Control.Dialog.Load = L.Control.Dialog.extend({
 	options: {
-		size: [ 300, 300 ],
-		minSize: [ 100, 100 ],
+		size: [ 300, 150 ],
+		minSize: [ 300, 150 ],
 		maxSize: [ 350, 350 ],
 		anchor: [ 50, 50 ],
 		position: 'topleft',
@@ -51,8 +51,8 @@ L.Control.Dialog.Load = L.Control.Dialog.extend({
 
 //init dialog size and position
 		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.maxSize = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
-		this.options.anchor = [ Math.floor(0.25 * mapSize.x), Math.floor(0.25 * mapSize.y) ];
+		this.options.size = [ Math.max(this.options.size[0], this.options.minSize[0]), Math.max(this.options.size[1], this.options.minSize[1]) ];
+		this.options.anchor = [ Math.floor(0.5 * (mapSize.x - this.options.size[0])), Math.floor(0.5 * (mapSize.y - this.options.size[1])) ];
 
 		this._isOpen = false;
 

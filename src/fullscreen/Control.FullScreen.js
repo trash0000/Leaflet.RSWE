@@ -1,8 +1,16 @@
 (function () {
+//force to create zoomControl at the same corner as FullScreen
+	L.Map.addInitHook(function () {
+		var _map = this;
+		if (!_map.options.zoomControl) {
+			this.zoomControl = new L.Control.Zoom({ position: 'bottomright' });
+			this.addControl(this.zoomControl);
+		}
+	});
 
 	L.Control.FullScreen = L.Control.extend({
 		options: {
-			position: 'topleft',
+			position: 'bottomright',
 			title: 'Full Screen',
 			titleCancel: 'Exit Full Screen',
 			forceSeparateButton: false,
@@ -64,7 +72,7 @@
 				} else {
 					L.DomUtil.removeClass(map._container, 'leaflet-pseudo-fullscreen');
 				}
-				map.invalidateSize();
+				setTimeout(L.bind(map.invalidateSize, map), 200);
 				map.fire('exitFullscreen');
 				map._exitFired = true;
 				map._isFullscreen = false;
@@ -74,7 +82,7 @@
 				} else {
 					L.DomUtil.addClass(map._container, 'leaflet-pseudo-fullscreen');
 				}
-				map.invalidateSize();
+				setTimeout(L.bind(map.invalidateSize, map), 200);
 				map.fire('enterFullscreen');
 				map._isFullscreen = true;
 			}
@@ -100,8 +108,7 @@
 
 	L.Map.addInitHook(function () {
 		L.extend(this.options, {
-			fullscreenControl: true,
-			fullscreenControlOptions: { position: 'topleft'	}
+			fullscreenControl: true
 		});
 
 		if (this.options.fullscreenControl) {
@@ -114,9 +121,7 @@
 Native FullScreen JavaScript API
 -------------
 Assumes Mozilla naming conventions instead of W3C for now
-
 source : http://johndyer.name/native-fullscreen-javascript-api-plus-jquery-plugin/
-
 */
 
 	var
