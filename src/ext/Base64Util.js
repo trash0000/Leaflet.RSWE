@@ -1,40 +1,136 @@
 L.Util = L.extend(L.Util || {}, {
 /*jslint bitwise: true */
-	base64Encode: function (data) {
-// Encodes data with MIME base64
-//
-// +   original by: Tyler Akins (http://rumkin.com)
-// +   improved by: Bayron Guevara
-		var b64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-		var o1, o2, o3, h1, h2, h3, h4, bits, i = 0, enc = '';
- 
-		do { // pack three octets into four hexets
-			o1 = data.charCodeAt(i++);
-			o2 = data.charCodeAt(i++);
-			o3 = data.charCodeAt(i++);
- 
-			bits = o1<<16 | o2<<8 | o3;
- 
-			h1 = bits>>18 & 0x3f;
-			h2 = bits>>12 & 0x3f;
-			h3 = bits>>6 & 0x3f;
-			h4 = bits & 0x3f;
- 
-        // use hexets to index into b64, and append result to encoded string
-			enc += b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
-		} while (i < data.length);
-		switch (data.length % 3) {
-		case 1:
-			enc = enc.slice(0, -2) + '==';
-			break;
-		case 2:
-			enc = enc.slice(0, -1) + '=';
-			break;
+
+	// private property
+	base64KeyStr : 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=',
+
+	// public method for encoding
+	base64Encode: function (input) {
+		var output = '';
+		var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+		var i = 0;
+
+		input = this.base64Utf8Encode(input);
+
+		while (i < input.length) {
+
+			chr1 = input.charCodeAt(i++);
+			chr2 = input.charCodeAt(i++);
+			chr3 = input.charCodeAt(i++);
+
+			enc1 = chr1 >> 2;
+			enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+			enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+			enc4 = chr3 & 63;
+
+			if (isNaN(chr2)) {
+				enc3 = enc4 = 64;
+			} else if (isNaN(chr3)) {
+				enc4 = 64;
+			}
+
+			output = output +
+			this.base64KeyStr.charAt(enc1) + this.base64KeyStr.charAt(enc2) +
+			this.base64KeyStr.charAt(enc3) + this.base64KeyStr.charAt(enc4);
+
 		}
-		return enc;
+
+		return output;
+	},
+
+	// public method for decoding
+	base64Decode: function (input) {
+		var output = '';
+		var chr1, chr2, chr3;
+		var enc1, enc2, enc3, enc4;
+		var i = 0;
+
+		input = input.replace(/[^A-Za-z0-9\+\/\=]/g, '');
+
+		while (i < input.length) {
+
+			enc1 = this.base64KeyStr.indexOf(input.charAt(i++));
+			enc2 = this.base64KeyStr.indexOf(input.charAt(i++));
+			enc3 = this.base64KeyStr.indexOf(input.charAt(i++));
+			enc4 = this.base64KeyStr.indexOf(input.charAt(i++));
+
+			chr1 = (enc1 << 2) | (enc2 >> 4);
+			chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+			chr3 = ((enc3 & 3) << 6) | enc4;
+
+			output = output + String.fromCharCode(chr1);
+
+			if (enc3 !== 64) {
+				output = output + String.fromCharCode(chr2);
+			}
+			if (enc4 !== 64) {
+				output = output + String.fromCharCode(chr3);
+			}
+
+		}
+
+		output = this.base64Utf8Decode(output);
+
+		return output;
+
+	},
+
+	// private method for UTF-8 encoding
+	base64Utf8Encode : function (string) {
+		string = string.replace(/\r\n/g, '\n');
+		var utftext = '';
+
+		for (var n = 0; n < string.length; n++) {
+
+			var c = string.charCodeAt(n);
+
+			if (c < 128) {
+				utftext += String.fromCharCode(c);
+			}
+			else if ((c > 127) && (c < 2048)) {
+				utftext += String.fromCharCode((c >> 6) | 192);
+				utftext += String.fromCharCode((c & 63) | 128);
+			}
+			else {
+				utftext += String.fromCharCode((c >> 12) | 224);
+				utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+				utftext += String.fromCharCode((c & 63) | 128);
+			}
+
+		}
+
+		return utftext;
+	},
+
+	// private method for UTF-8 decoding
+	base64Utf8Decode : function (utftext) {
+		var string = '';
+		var i = 0;
+		var c1 = 0, c2 = 0, c3 = 0;
+
+		while (i < utftext.length) {
+
+			c1 = utftext.charCodeAt(i);
+
+			if (c1 < 128) {
+				string += String.fromCharCode(c1);
+				i++;
+			}
+			else if ((c1 > 191) && (c1 < 224)) {
+				c2 = utftext.charCodeAt(i + 1);
+				string += String.fromCharCode(((c1 & 31) << 6) | (c2 & 63));
+				i += 2;
+			}
+			else {
+				c2 = utftext.charCodeAt(i + 1);
+				c3 = utftext.charCodeAt(i + 2);
+				string += String.fromCharCode(((c1 & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+				i += 3;
+			}
+
+		}
+
+		return string;
 	}
+
 });
-
-
-
-

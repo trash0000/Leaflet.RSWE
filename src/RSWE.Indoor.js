@@ -14,6 +14,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 		fitBondsAfterLoad: true,
 		showSizeArrows: true,
 		dontShowSmallSizeLabels: 0.5,
+		showSquareLabels: true,
+		considerWallThikness: true,
 		wallWidth: 0.1,
 		pixelsPerMeter: 100,
 		snapOptions: {
@@ -91,6 +93,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		} else if (layer instanceof L.Marker) {
 			layerClass = 'marker';
 		}
+
 		if (layerType) { layer.options.layerType = layerType; }
 
 		if (layerClass === 'circle') {
@@ -151,22 +154,26 @@ L.Control.RSWEIndoor = L.Control.extend({
 			p0, p1, p2, p3,
 			p01, p02, p11, p12, p21, p22, p31, p32,
 			a11, a12, a21, a22,
-			p110, p120, p210, p220,
+			ar1, ar2, ar11, ar12, ar21, ar22,
 			g1, g2, g11, g12, g21, g22,
 			d01, d11, d12, d02, d21, d22,
-			center, center1, heightPoint1, center2, heightPoint2;
+			center, center1, heightPoint1, center2, heightPoint2,
+			roomcenter, roomcenterH, square;
 
 		var gapStart, gapEnd, wallType;
 
 		var getRightClickFunc = function (roomId, wallId) { return function () { this.ChangeWallType(roomId, wallId); }; };
 
 		if (pointsCount > 1) {
-
 //bugfix: correcting situation in case zero distance between verticies delete merged verticies
-			for (i = 0; i < pointsCount - 1; i++) {
+			roomcenter = new L.LatLng(0, 0);
+			square = 0;
+
+			for (i = 0; i <= pointsCount - 1; i++) {
 				p1 = new L.LatLng(latLngs[(i) % pointsCount].lat, latLngs[(i) % pointsCount].lng);
 				p2 = new L.LatLng(latLngs[(i + 1) % pointsCount].lat, latLngs[(i + 1) % pointsCount].lng);
 				distance =  p2.distanceTo(p1);
+				coslat1 = Math.cos(p1.lat * Math.PI / 180);
 				if (Math.abs(distance) < 0.000000000001) {
 					latLngs.splice();
 					latLngs.splice(i + 1, 1);
@@ -174,11 +181,17 @@ L.Control.RSWEIndoor = L.Control.extend({
 					pointsCount--;
 					continue;
 				}
+
+				coslat1 = Math.cos(p1.lat * Math.PI / 180);
+
+				square += 0.5 * (p2.lng * p1.lat - p1.lng * p2.lat) * 6378137 * 6378137 * Math.PI * Math.PI / (coslat1 * 180 * 180);
+				roomcenter.lat += p1.lat / (pointsCount);
+				roomcenter.lng += p1.lng / (pointsCount);
 			}
 
 			roomWalls = [];
 
-			for (i = 0; i < pointsCount; i++) {
+			for (i = 0; i <= pointsCount; i++) {
 				p1 = new L.LatLng(latLngs[(i) % pointsCount].lat, latLngs[(i) % pointsCount].lng);
 				p2 = new L.LatLng(latLngs[(i + 1) % pointsCount].lat, latLngs[(i + 1) % pointsCount].lng);
 
@@ -223,6 +236,11 @@ L.Control.RSWEIndoor = L.Control.extend({
 				detx = (p31.lng - p21.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p31.lat - p21.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a21 = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p21.lat, (detx / det) * (p2.lng - p1.lng) + p21.lng);
+
+					if ((p21.lat - p2.lat) * (p3.lat - p2.lat) + (p21.lng - p2.lng) * (p3.lng - p2.lng) >= 0) {
+						ar2 = new L.LatLng(a21.lat + 0.5 * (p22.lat - p21.lat), a21.lng + 0.5 * (p22.lng - p21.lng));
+					}
+
 					distance =  p2.distanceTo(a21);
 					dist =  p2.distanceTo(p21);
 					if (distance > dist * SQRT_2) {
@@ -231,12 +249,18 @@ L.Control.RSWEIndoor = L.Control.extend({
 					}
 				} else {
 					a21 = new L.LatLng(p21.lat, p21.lng);
+					ar2 = new L.LatLng(p2.lat, p2.lng);
 				}
 
 				det = (p2.lng - p1.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p2.lat - p1.lat);
 				detx = (p32.lng - p22.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p32.lat - p22.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a22 = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p22.lat, (detx / det) * (p2.lng - p1.lng) + p22.lng);
+
+					if ((p21.lat - p2.lat) * (p3.lat - p2.lat) + (p21.lng - p2.lng) * (p3.lng - p2.lng) < 0) {
+						ar2 = new L.LatLng(a22.lat - 0.5 * (p22.lat - p21.lat), a22.lng - 0.5 * (p22.lng - p21.lng));
+					}
+
 					distance =  p2.distanceTo(a22);
 					dist =  p2.distanceTo(p22);
 					if (distance > dist * SQRT_2) {
@@ -245,6 +269,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 					}
 				} else {
 					a22 = new L.LatLng(p22.lat, p22.lng);
+					ar2 = new L.LatLng(p2.lat, p2.lng);
 				}
 
 				distance =  p1.distanceTo(p0);
@@ -256,8 +281,12 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 				det = (p1.lng - p0.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p1.lat - p0.lat);
 				detx = (p11.lng - p01.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p11.lat - p01.lat);
+
 				if (Math.abs(det) > 0.000000000001) {
 					a11 = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p01.lat, (detx / det) * (p1.lng - p0.lng) + p01.lng);
+					if ((p11.lat - p1.lat) * (p0.lat - p1.lat) + (p11.lng - p1.lng) * (p0.lng - p1.lng) >= 0) {
+						ar1 = new L.LatLng(a11.lat + 0.5 * (p12.lat - p11.lat), a11.lng + 0.5 * (p12.lng - p11.lng));
+					}
 					distance =  p1.distanceTo(a11);
 					dist =  p1.distanceTo(p11);
 					if (distance > dist * SQRT_2) {
@@ -266,11 +295,15 @@ L.Control.RSWEIndoor = L.Control.extend({
 					}
 				} else {
 					a11 = new L.LatLng(p01.lat, p01.lng);
+					ar1 = new L.LatLng(p1.lat, p1.lng);
 				}
 				det = (p1.lng - p0.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p1.lat - p0.lat);
 				detx = (p12.lng - p02.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p12.lat - p02.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a12 = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p02.lat, (detx / det) * (p1.lng - p0.lng) + p02.lng);
+					if ((p11.lat - p1.lat) * (p0.lat - p1.lat) + (p11.lng - p1.lng) * (p0.lng - p1.lng) < 0) {
+						ar1 = new L.LatLng(a12.lat - 0.5 * (p12.lat - p11.lat), a12.lng - 0.5 * (p12.lng - p11.lng));
+					}
 					distance =  p1.distanceTo(a12);
 					dist =  p1.distanceTo(p12);
 					if (distance > dist * SQRT_2) {
@@ -279,6 +312,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 					}
 				} else {
 					a12 = new L.LatLng(p02.lat, p02.lng);
+					ar1 = new L.LatLng(p1.lat, p1.lng);
 				}
 
 				if ((this.options.layers[roomId] === undefined)) {
@@ -351,15 +385,22 @@ L.Control.RSWEIndoor = L.Control.extend({
 					g1.lng + (g2.lat - g1.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (g2.lng - g1.lng) * 0.5);
 
 
+				if (!this._map.RSWEIndoor.options.considerWallThikness) {
+					ar1.lat = p1.lat;
+					ar1.lng = p1.lng;
+					ar2.lat = p2.lat;
+					ar2.lng = p2.lng;
+				}
 
-				p110 = new L.LatLng(p1.lat + (p12.lng - p11.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p12.lat - p11.lat) * 0.25,
-					p1.lng - (p12.lat - p11.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p12.lng - p11.lng) * 0.25);
-				p120 = new L.LatLng(p1.lat - (p11.lng - p12.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p11.lat - p12.lat) * 0.25,
-					p1.lng + (p11.lat - p12.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p11.lng - p12.lng) * 0.25);
-				p210 = new L.LatLng(p2.lat - (p22.lng - p21.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p22.lat - p21.lat) * 0.25,
-					p2.lng + (p22.lat - p21.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p22.lng - p21.lng) * 0.25);
-				p220 = new L.LatLng(p2.lat + (p21.lng - p22.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p21.lat - p22.lat) * 0.25,
-					p2.lng - (p21.lat - p22.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p21.lng - p22.lng) * 0.25);
+				ar11 = new L.LatLng(ar1.lat + (p12.lng - p11.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p12.lat - p11.lat) * 0.25,
+					ar1.lng - (p12.lat - p11.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p12.lng - p11.lng) * 0.25);
+				ar12 = new L.LatLng(ar1.lat - (p11.lng - p12.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p11.lat - p12.lat) * 0.25,
+					ar1.lng + (p11.lat - p12.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p11.lng - p12.lng) * 0.25);
+				ar21 = new L.LatLng(ar2.lat - (p22.lng - p21.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p22.lat - p21.lat) * 0.25,
+					ar2.lng + (p22.lat - p21.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p22.lng - p21.lng) * 0.25);
+				ar22 = new L.LatLng(ar2.lat + (p21.lng - p22.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p21.lat - p22.lat) * 0.25,
+					ar2.lng - (p21.lat - p22.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p21.lng - p22.lng) * 0.25);
+
 
 
 				center1 = new L.LatLng(0.5 * (p11.lat + p21.lat), 0.5 * (p11.lng + p21.lng));
@@ -368,6 +409,9 @@ L.Control.RSWEIndoor = L.Control.extend({
 				heightPoint1 = new L.LatLng(center1.lat + p12.lat - p11.lat, center1.lng + p12.lng - p11.lng);
 				heightPoint2 = new L.LatLng(center2.lat + p11.lat - p12.lat, center2.lng + p11.lng - p12.lng);
 
+
+
+				
 				this.options.controlLayerGrp.addLayer(layer);
 
 				for (var j = 0, n = this.options.snapOptions.snapLayersArray.length; j < n; j++) {
@@ -391,21 +435,21 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 
 					if (this._map.RSWEIndoor.options.showSizeArrows) {
-						distance =  p2.distanceTo(p1);
+						distance =  ar2.distanceTo(ar1);
 						if (distance > _dontShowSmallSizeLabels) {
 //arrow body
-							controlWall = new L.Polyline([p1, p2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall = new L.Polyline([ar1, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
 							controlWall.options.layerType = 'size-arrows';//'control';
 							this.options.drawnWallsLayerGrp.addLayer(controlWall);
 							roomWalls.push(controlWall);
 //draw sizes
 //arrow ends
-							controlWall = new L.Polygon([p110, p120, p1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall = new L.Polygon([ar11, ar12, ar1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
 							controlWall.options.layerType = 'size-arrows';//'control';
 							this.options.drawnWallsLayerGrp.addLayer(controlWall);
 							roomWalls.push(controlWall);
 
-							controlWall = new L.Polygon([p210, p220, p2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall = new L.Polygon([ar21, ar22, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
 							controlWall.options.layerType = 'size-arrows';//'control';
 							this.options.drawnWallsLayerGrp.addLayer(controlWall);
 							roomWalls.push(controlWall);
@@ -754,6 +798,25 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 
 			}
+			roomcenterH = new L.LatLng(roomcenter.lat + 0.01, roomcenter.lng);
+			distance =  roomcenter.distanceTo(roomcenterH);
+			roomcenterH.lat = roomcenter.lat + (roomcenterH.lat - roomcenter.lat) * 2 * (_WallWidth / distance);
+			roomcenterH.lng = roomcenter.lng + (roomcenterH.lng - roomcenter.lng) * 2 * (_WallWidth / distance);
+
+			roomcenter.lat = roomcenter.lat - (roomcenterH.lat - roomcenter.lat);
+			roomcenter.lng = roomcenter.lng - (roomcenterH.lng - roomcenter.lng);
+
+			if (this._map.RSWEIndoor.options.showSquareLabels) {
+				square = Math.abs(square);
+				if (wallType === 'wall' && layer.isConvex()) {
+					controlWall = new L.ScalableText(' ' + (square + 0.001).toFixed(1) + ' m\u00B2 ', roomcenter, roomcenterH,
+					{'bgColor': 'transparent', 'attributes': {'fill': 'white'}});
+					controlWall.options.layerType = 'square';
+					this.options.drawnWallsLayerGrp.addLayer(controlWall);
+					roomWalls.push(controlWall);
+				}
+			}
+
 			this.options.roomWallsProps[roomId] = roomWallsProps;
 			this.options.roomProps[roomId] = roomProps;
 
@@ -764,6 +827,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'size-text') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'window') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'door') { layer.bringToFront(); } });
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'square') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'control') { layer.bringToFront(); } });
 
 	},
@@ -934,14 +998,15 @@ L.Control.RSWEIndoor = L.Control.extend({
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'window') { outSVG += self.layerToSVG(layer); }
 		});
-
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'door') { outSVG += self.layerToSVG(layer); }
+		});
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'square') { outSVG += self.layerToSVG(layer); }
 		});
 
 		outSVG += '</svg>';
 		return outSVG;
-
 	},
 	layerToSVG: function (layer) {
 		var bnds = this.options.drawnWallsLayerGrp.getBounds();
@@ -1044,10 +1109,18 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 			if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
 
-			outLayer = '<g><g transform="' + transform + '">' +
-				'<rect x="-2" y="-10" height="10" fill="black" width="' + textWidth * 12 / fontSize  + '"/>' +
-				'<text fill="white" text-anchor="start" y="-1" font-size="12px" font-family="Arial">' +
-				layer._text + '</text></g></g>\r\n';
+			if (layer.options.layerType === 'size-text') {
+				outLayer = '<g><g transform="' + transform + '">' +
+					'<rect x="-2" y="-10" height="10" fill="black" width="' + textWidth * 12 / fontSize  + '"/>' +
+					'<text fill="white" text-anchor="start" y="-1" font-size="12px" font-family="Arial">' +
+					layer._text + '</text></g></g>\r\n';
+			}
+			if (layer.options.layerType === 'square') {
+				outLayer = '<g><g transform="' + transform + '">' +
+//					'<rect x="-4" y="-20" height="20" fill="transparent" width="' + textWidth * 24 / fontSize  + '"/>' +
+					'<text fill="#dddddd" text-anchor="start" y="-2" font-size="24px" font-family="Arial">' +
+					layer._text + '</text></g></g>\r\n';
+			}
 			return outLayer;
 		}
 		return outLayer;

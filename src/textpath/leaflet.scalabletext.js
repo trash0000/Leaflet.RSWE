@@ -7,25 +7,47 @@
 (function () {
         L.ScalableText = L.Path.extend({
             initialize: function (text, bindPoint, heightPoint, options) {
-                L.Path.prototype.initialize.call(this, options);
+                var attrCopy;
+                if (options && options.attributes) { attrCopy = {}; L.Util.extend(attrCopy, options.attributes); delete options.attributes; }
 
+//                if (options) {
+//                    options.attributes = {};
+//                    L.Util.extend(options.attributes, this.option.attributes);
+//                }
+
+                this.options = {};
+                L.Util.extend(this.options, this.defaultOptions);
+                if (options) { L.Util.extend(this.options, options); }
+
+                this.options.attributes = {};
+                L.Util.extend(this.options.attributes, this.defaultAttributes);
+
+                if (attrCopy !== undefined) {
+                    L.Util.extend(this.options.attributes, attrCopy);
+                    options.attributes = {};
+                    L.Util.extend(options.attributes, attrCopy);
+                }
+
+                L.Path.prototype.initialize.call(this, this.options);
                 this._latlngs = this._convertLatLngs([bindPoint, heightPoint]);
                 this._text = text;
-                this.bindPoint = this._latlngs[0];// ? this._latlngs[0] : new L.LatLng(0, 0);
-                this.heightPoint = this._latlngs[1];// ? this._latlngs[1] : new L.LatLng(0, 0);
+                this.bindPoint = this._latlngs[0];
+                this.heightPoint = this._latlngs[1];
             },
-
-            options: {
-		// how much to simplify the polyline on each zoom level
-		// more = better performance and smoother look, less = more accurate
+            defaultAttributes: {
+                'fill': 'white',
+                'text-anchor': 'start',
+                'line-height': '15px',
+                'font-size': '12px',
+                'font-family': 'Arial'
+            },
+            defaultOptions: {
                 bgColor: 'black',
-                attributes: {'fill': 'white', 'text-anchor': 'start', 'line-height': '15px', 'font-size': '12px', 'font-family': 'Arial'},
                 orientation: 'normal',
                 center: true,
                 below: false
-
-
             },
+            options: {},
 
             onAdd: function (map) {
                 L.Path.prototype.onAdd.call(this, map);
@@ -70,9 +92,11 @@
             },
 
             _textRedraw: function () {
-                var text = this._text,
-                options = this.options;
-                if (text) { this.setText(text, options); }
+                var text = this._text;
+
+//                var options = this.options;
+//                if (text) { this.setText(text, options); }
+                if (text) { this.setText(text); }
             },
 
             projectLatlngs: function () {
@@ -104,9 +128,18 @@
             _initEvents: function () {
                 L.Path.prototype._initEvents.call(this);
             },
-            setText: function (text, options) {
+            setText: function (text) {//, options) {
                 this._text = text;
-                this.options = L.Util.extend(this.options, options);
+//                if (options) { this.options = L.Util.extend(this.defaultOptions, options); }
+
+//                this.options.attributes = L.Util.extend(this.options.attributes, this.defaultOptions.attributes);
+//                if (options && options.attributes) { this.options.attributes = L.Util.extend(this.defaultOptions.attributes, options.attributes); }
+
+
+//                var attributes = L.Util.extend(this.options.attributes, options.attributes);
+//                this.options = L.Util.extend(this.options, options);
+//                this.options.attributes = attributes;
+//                this.options = L.Util.extend(this.options, options);
 /* If not in SVG mode or Polyline not added to map yet return */
 /* setText will be called by onAdd, using value stored in this._text */
                 if (!L.Browser.svg || typeof this._map === 'undefined') { return this; }
@@ -139,12 +172,11 @@
                     this._container.appendChild(this._gNode);
                 }
 
-                for (var attr in options.attributes) { this._textNode.setAttribute(attr, options.attributes[attr]); }
-
+                for (var attr in this.options.attributes) { this._textNode.setAttribute(attr, this.options.attributes[attr]); }
                 this._textNode.innerHTML = this._text.replace(/ /g, '\u00A0');
                 if (this.heightPoint && this.bindPoint) {
-                    var lineHeight = parseInt(options.attributes['line-height'].replace('px', ''), 10);
-                    var fontSize = parseInt(options.attributes['font-size'].replace('px', ''), 10);
+                    var lineHeight = parseInt(this.options.attributes['line-height'].replace('px', ''), 10);
+                    var fontSize = parseInt(this.options.attributes['font-size'].replace('px', ''), 10);
 
                     var point = this._map.latLngToLayerPoint(this.bindPoint);
                     var scaleH = point.distanceTo(this._map.latLngToLayerPoint(this.heightPoint)) / lineHeight;
@@ -185,7 +217,7 @@
             }
         });
 
-        L.scalabletext = function (latlngs, options) {
-            return new L.ScalableText(latlngs, options);
+        L.scalabletext = function (text, latlngs, options) {
+            return new L.ScalableText(text, latlngs, options);
         };
     })();

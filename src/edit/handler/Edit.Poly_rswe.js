@@ -120,6 +120,8 @@ L.Edit.Poly = L.Handler.extend({
 	_onMarkerDrag: function (e) {
 		var marker = e.target;
 
+		L.DomEvent.preventDefault(e);
+
 		L.extend(marker._origLatLng, marker._latlng);
 
 		if (marker._middleLeft) {

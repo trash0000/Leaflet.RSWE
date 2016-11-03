@@ -209,6 +209,44 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 					}
 				}, this);
 			}
+			if (this._map.RSWEIndoor.options.considerWallThikness !== undefined) {
+				elem = L.DomUtil.create('div', 'considerWallThikness-control');
+				tab.appendChild(elem);
+				if (this._map.RSWEIndoor.options.considerWallThikness === true) {
+					elem.innerHTML =
+						'<label><input type="checkbox" checked name="considerWallThikness" value="1" />Consider Wall Thikness</label>';
+				} else {
+					elem.innerHTML =
+						'<label><input type="checkbox" name="considerWallThikness" value="1" />Consider Wall Thikness</label>';
+				}
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.checked) {
+						this._map.RSWEIndoor.options.considerWallThikness = true;
+					} else {
+						this._map.RSWEIndoor.options.considerWallThikness = false;
+					}
+					this._map.fire('redraw:all');
+				}, this);
+			}
+			if (this._map.RSWEIndoor.options.showSquareLabels !== undefined) {
+				elem = L.DomUtil.create('div', 'display-showSquareLabels-control');
+				tab.appendChild(elem);
+				if (this._map.RSWEIndoor.options.showSquareLabels === true) {
+					elem.innerHTML =
+						'<label><input type="checkbox" checked name="showSquareLabels" value="1" />Show Square Labels</label>';
+				} else {
+					elem.innerHTML =
+						'<label><input type="checkbox" name="showSquareLabels" value="1" />Show Square Labels</label>';
+				}
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.checked) {
+						this._map.RSWEIndoor.options.showSquareLabels = true;
+					} else {
+						this._map.RSWEIndoor.options.showSquareLabels = false;
+					}
+					this._map.fire('redraw:all');
+				}, this);
+			}
 		}
 		tab = this._getTabContainer(1);
 		if (tab) {

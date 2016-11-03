@@ -81,5 +81,23 @@ L.Polyline.include({
 		}
 
 		return false;
+	},
+	isConvex: function () {
+		var points = this._originalPoints,
+			len = points ? points.length : 0,
+			p, p1, p2;
+		if (len < 3) { return false; }
+
+		for (var i = 0, ccw = 0; i < len - 1; i++) {
+			for (var j = 0; j < len - 2; j++) {
+				p = points[i % len];
+				p1 = points[(i + j + 1) % len];
+				p2 = points[(i + j + 2) % len];
+				if (ccw === 0) { ccw = (p2.y - p.y) * (p1.x - p.x) - (p1.y - p.y) * (p2.x - p.x); }
+				if (ccw * ((p2.y - p.y) * (p1.x - p.x) - (p1.y - p.y) * (p2.x - p.x)) < 0) { return false; }
+			}
+		}
+		if (ccw !== 0) { return true; }
+		return false;
 	}
 });

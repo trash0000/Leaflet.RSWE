@@ -196,45 +196,140 @@ source : http://johndyer.name/native-fullscreen-javascript-api-plus-jquery-plugi
 
 L.Util = L.extend(L.Util || {}, {
 /*jslint bitwise: true */
-	base64Encode: function (data) {
-// Encodes data with MIME base64
-//
-// +   original by: Tyler Akins (http://rumkin.com)
-// +   improved by: Bayron Guevara
-		var b64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-		var o1, o2, o3, h1, h2, h3, h4, bits, i = 0, enc = '';
- 
-		do { // pack three octets into four hexets
-			o1 = data.charCodeAt(i++);
-			o2 = data.charCodeAt(i++);
-			o3 = data.charCodeAt(i++);
- 
-			bits = o1<<16 | o2<<8 | o3;
- 
-			h1 = bits>>18 & 0x3f;
-			h2 = bits>>12 & 0x3f;
-			h3 = bits>>6 & 0x3f;
-			h4 = bits & 0x3f;
- 
-        // use hexets to index into b64, and append result to encoded string
-			enc += b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
-		} while (i < data.length);
-		switch (data.length % 3) {
-		case 1:
-			enc = enc.slice(0, -2) + '==';
-			break;
-		case 2:
-			enc = enc.slice(0, -1) + '=';
-			break;
+
+	// private property
+	base64KeyStr : 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=',
+
+	// public method for encoding
+	base64Encode: function (input) {
+		var output = '';
+		var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+		var i = 0;
+
+		input = this.base64Utf8Encode(input);
+
+		while (i < input.length) {
+
+			chr1 = input.charCodeAt(i++);
+			chr2 = input.charCodeAt(i++);
+			chr3 = input.charCodeAt(i++);
+
+			enc1 = chr1 >> 2;
+			enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+			enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+			enc4 = chr3 & 63;
+
+			if (isNaN(chr2)) {
+				enc3 = enc4 = 64;
+			} else if (isNaN(chr3)) {
+				enc4 = 64;
+			}
+
+			output = output +
+			this.base64KeyStr.charAt(enc1) + this.base64KeyStr.charAt(enc2) +
+			this.base64KeyStr.charAt(enc3) + this.base64KeyStr.charAt(enc4);
+
 		}
-		return enc;
+
+		return output;
+	},
+
+	// public method for decoding
+	base64Decode: function (input) {
+		var output = '';
+		var chr1, chr2, chr3;
+		var enc1, enc2, enc3, enc4;
+		var i = 0;
+
+		input = input.replace(/[^A-Za-z0-9\+\/\=]/g, '');
+
+		while (i < input.length) {
+
+			enc1 = this.base64KeyStr.indexOf(input.charAt(i++));
+			enc2 = this.base64KeyStr.indexOf(input.charAt(i++));
+			enc3 = this.base64KeyStr.indexOf(input.charAt(i++));
+			enc4 = this.base64KeyStr.indexOf(input.charAt(i++));
+
+			chr1 = (enc1 << 2) | (enc2 >> 4);
+			chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+			chr3 = ((enc3 & 3) << 6) | enc4;
+
+			output = output + String.fromCharCode(chr1);
+
+			if (enc3 !== 64) {
+				output = output + String.fromCharCode(chr2);
+			}
+			if (enc4 !== 64) {
+				output = output + String.fromCharCode(chr3);
+			}
+
+		}
+
+		output = this.base64Utf8Decode(output);
+
+		return output;
+
+	},
+
+	// private method for UTF-8 encoding
+	base64Utf8Encode : function (string) {
+		string = string.replace(/\r\n/g, '\n');
+		var utftext = '';
+
+		for (var n = 0; n < string.length; n++) {
+
+			var c = string.charCodeAt(n);
+
+			if (c < 128) {
+				utftext += String.fromCharCode(c);
+			}
+			else if ((c > 127) && (c < 2048)) {
+				utftext += String.fromCharCode((c >> 6) | 192);
+				utftext += String.fromCharCode((c & 63) | 128);
+			}
+			else {
+				utftext += String.fromCharCode((c >> 12) | 224);
+				utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+				utftext += String.fromCharCode((c & 63) | 128);
+			}
+
+		}
+
+		return utftext;
+	},
+
+	// private method for UTF-8 decoding
+	base64Utf8Decode : function (utftext) {
+		var string = '';
+		var i = 0;
+		var c1 = 0, c2 = 0, c3 = 0;
+
+		while (i < utftext.length) {
+
+			c1 = utftext.charCodeAt(i);
+
+			if (c1 < 128) {
+				string += String.fromCharCode(c1);
+				i++;
+			}
+			else if ((c1 > 191) && (c1 < 224)) {
+				c2 = utftext.charCodeAt(i + 1);
+				string += String.fromCharCode(((c1 & 31) << 6) | (c2 & 63));
+				i += 2;
+			}
+			else {
+				c2 = utftext.charCodeAt(i + 1);
+				c3 = utftext.charCodeAt(i + 2);
+				string += String.fromCharCode(((c1 & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+				i += 3;
+			}
+
+		}
+
+		return string;
 	}
+
 });
-
-
-
-
-
 
 /*
  * Leaflet.curve v0.1.0 - a plugin for Leaflet mapping library. https://github.com/elfalem/Leaflet.curve
@@ -453,25 +548,47 @@ L.curve = function (path, options) {
 (function () {
         L.ScalableText = L.Path.extend({
             initialize: function (text, bindPoint, heightPoint, options) {
-                L.Path.prototype.initialize.call(this, options);
+                var attrCopy;
+                if (options && options.attributes) { attrCopy = {}; L.Util.extend(attrCopy, options.attributes); delete options.attributes; }
 
+//                if (options) {
+//                    options.attributes = {};
+//                    L.Util.extend(options.attributes, this.option.attributes);
+//                }
+
+                this.options = {};
+                L.Util.extend(this.options, this.defaultOptions);
+                if (options) { L.Util.extend(this.options, options); }
+
+                this.options.attributes = {};
+                L.Util.extend(this.options.attributes, this.defaultAttributes);
+
+                if (attrCopy !== undefined) {
+                    L.Util.extend(this.options.attributes, attrCopy);
+                    options.attributes = {};
+                    L.Util.extend(options.attributes, attrCopy);
+                }
+
+                L.Path.prototype.initialize.call(this, this.options);
                 this._latlngs = this._convertLatLngs([bindPoint, heightPoint]);
                 this._text = text;
-                this.bindPoint = this._latlngs[0];// ? this._latlngs[0] : new L.LatLng(0, 0);
-                this.heightPoint = this._latlngs[1];// ? this._latlngs[1] : new L.LatLng(0, 0);
+                this.bindPoint = this._latlngs[0];
+                this.heightPoint = this._latlngs[1];
             },
-
-            options: {
-		// how much to simplify the polyline on each zoom level
-		// more = better performance and smoother look, less = more accurate
+            defaultAttributes: {
+                'fill': 'white',
+                'text-anchor': 'start',
+                'line-height': '15px',
+                'font-size': '12px',
+                'font-family': 'Arial'
+            },
+            defaultOptions: {
                 bgColor: 'black',
-                attributes: {'fill': 'white', 'text-anchor': 'start', 'line-height': '15px', 'font-size': '12px', 'font-family': 'Arial'},
                 orientation: 'normal',
                 center: true,
                 below: false
-
-
             },
+            options: {},
 
             onAdd: function (map) {
                 L.Path.prototype.onAdd.call(this, map);
@@ -516,9 +633,11 @@ L.curve = function (path, options) {
             },
 
             _textRedraw: function () {
-                var text = this._text,
-                options = this.options;
-                if (text) { this.setText(text, options); }
+                var text = this._text;
+
+//                var options = this.options;
+//                if (text) { this.setText(text, options); }
+                if (text) { this.setText(text); }
             },
 
             projectLatlngs: function () {
@@ -550,9 +669,18 @@ L.curve = function (path, options) {
             _initEvents: function () {
                 L.Path.prototype._initEvents.call(this);
             },
-            setText: function (text, options) {
+            setText: function (text) {//, options) {
                 this._text = text;
-                this.options = L.Util.extend(this.options, options);
+//                if (options) { this.options = L.Util.extend(this.defaultOptions, options); }
+
+//                this.options.attributes = L.Util.extend(this.options.attributes, this.defaultOptions.attributes);
+//                if (options && options.attributes) { this.options.attributes = L.Util.extend(this.defaultOptions.attributes, options.attributes); }
+
+
+//                var attributes = L.Util.extend(this.options.attributes, options.attributes);
+//                this.options = L.Util.extend(this.options, options);
+//                this.options.attributes = attributes;
+//                this.options = L.Util.extend(this.options, options);
 /* If not in SVG mode or Polyline not added to map yet return */
 /* setText will be called by onAdd, using value stored in this._text */
                 if (!L.Browser.svg || typeof this._map === 'undefined') { return this; }
@@ -585,12 +713,11 @@ L.curve = function (path, options) {
                     this._container.appendChild(this._gNode);
                 }
 
-                for (var attr in options.attributes) { this._textNode.setAttribute(attr, options.attributes[attr]); }
-
+                for (var attr in this.options.attributes) { this._textNode.setAttribute(attr, this.options.attributes[attr]); }
                 this._textNode.innerHTML = this._text.replace(/ /g, '\u00A0');
                 if (this.heightPoint && this.bindPoint) {
-                    var lineHeight = parseInt(options.attributes['line-height'].replace('px', ''), 10);
-                    var fontSize = parseInt(options.attributes['font-size'].replace('px', ''), 10);
+                    var lineHeight = parseInt(this.options.attributes['line-height'].replace('px', ''), 10);
+                    var fontSize = parseInt(this.options.attributes['font-size'].replace('px', ''), 10);
 
                     var point = this._map.latLngToLayerPoint(this.bindPoint);
                     var scaleH = point.distanceTo(this._map.latLngToLayerPoint(this.heightPoint)) / lineHeight;
@@ -631,8 +758,8 @@ L.curve = function (path, options) {
             }
         });
 
-        L.scalabletext = function (latlngs, options) {
-            return new L.ScalableText(latlngs, options);
+        L.scalabletext = function (text, latlngs, options) {
+            return new L.ScalableText(text, latlngs, options);
         };
     })();
 
@@ -2244,6 +2371,8 @@ L.Edit.Poly = L.Handler.extend({
 	_onMarkerDrag: function (e) {
 		var marker = e.target;
 
+		L.DomEvent.preventDefault(e);
+
 		L.extend(marker._origLatLng, marker._latlng);
 
 		if (marker._middleLeft) {
@@ -3383,6 +3512,24 @@ L.Polyline.include({
 			}
 		}
 
+		return false;
+	},
+	isConvex: function () {
+		var points = this._originalPoints,
+			len = points ? points.length : 0,
+			p, p1, p2;
+		if (len < 3) { return false; }
+
+		for (var i = 0, ccw = 0; i < len - 1; i++) {
+			for (var j = 0; j < len - 2; j++) {
+				p = points[i % len];
+				p1 = points[(i + j + 1) % len];
+				p2 = points[(i + j + 2) % len];
+				if (ccw === 0) { ccw = (p2.y - p.y) * (p1.x - p.x) - (p1.y - p.y) * (p2.x - p.x); }
+				if (ccw * ((p2.y - p.y) * (p1.x - p.x) - (p1.y - p.y) * (p2.x - p.x)) < 0) { return false; }
+			}
+		}
+		if (ccw !== 0) { return true; }
 		return false;
 	}
 });
@@ -6411,6 +6558,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 		fitBondsAfterLoad: true,
 		showSizeArrows: true,
 		dontShowSmallSizeLabels: 0.5,
+		showSquareLabels: true,
+		considerWallThikness: true,
 		wallWidth: 0.1,
 		pixelsPerMeter: 100,
 		snapOptions: {
@@ -6488,6 +6637,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		} else if (layer instanceof L.Marker) {
 			layerClass = 'marker';
 		}
+
 		if (layerType) { layer.options.layerType = layerType; }
 
 		if (layerClass === 'circle') {
@@ -6548,22 +6698,26 @@ L.Control.RSWEIndoor = L.Control.extend({
 			p0, p1, p2, p3,
 			p01, p02, p11, p12, p21, p22, p31, p32,
 			a11, a12, a21, a22,
-			p110, p120, p210, p220,
+			ar1, ar2, ar11, ar12, ar21, ar22,
 			g1, g2, g11, g12, g21, g22,
 			d01, d11, d12, d02, d21, d22,
-			center, center1, heightPoint1, center2, heightPoint2;
+			center, center1, heightPoint1, center2, heightPoint2,
+			roomcenter, roomcenterH, square;
 
 		var gapStart, gapEnd, wallType;
 
 		var getRightClickFunc = function (roomId, wallId) { return function () { this.ChangeWallType(roomId, wallId); }; };
 
 		if (pointsCount > 1) {
-
 //bugfix: correcting situation in case zero distance between verticies delete merged verticies
-			for (i = 0; i < pointsCount - 1; i++) {
+			roomcenter = new L.LatLng(0, 0);
+			square = 0;
+
+			for (i = 0; i <= pointsCount - 1; i++) {
 				p1 = new L.LatLng(latLngs[(i) % pointsCount].lat, latLngs[(i) % pointsCount].lng);
 				p2 = new L.LatLng(latLngs[(i + 1) % pointsCount].lat, latLngs[(i + 1) % pointsCount].lng);
 				distance =  p2.distanceTo(p1);
+				coslat1 = Math.cos(p1.lat * Math.PI / 180);
 				if (Math.abs(distance) < 0.000000000001) {
 					latLngs.splice();
 					latLngs.splice(i + 1, 1);
@@ -6571,11 +6725,17 @@ L.Control.RSWEIndoor = L.Control.extend({
 					pointsCount--;
 					continue;
 				}
+
+				coslat1 = Math.cos(p1.lat * Math.PI / 180);
+
+				square += 0.5 * (p2.lng * p1.lat - p1.lng * p2.lat) * 6378137 * 6378137 * Math.PI * Math.PI / (coslat1 * 180 * 180);
+				roomcenter.lat += p1.lat / (pointsCount);
+				roomcenter.lng += p1.lng / (pointsCount);
 			}
 
 			roomWalls = [];
 
-			for (i = 0; i < pointsCount; i++) {
+			for (i = 0; i <= pointsCount; i++) {
 				p1 = new L.LatLng(latLngs[(i) % pointsCount].lat, latLngs[(i) % pointsCount].lng);
 				p2 = new L.LatLng(latLngs[(i + 1) % pointsCount].lat, latLngs[(i + 1) % pointsCount].lng);
 
@@ -6620,6 +6780,11 @@ L.Control.RSWEIndoor = L.Control.extend({
 				detx = (p31.lng - p21.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p31.lat - p21.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a21 = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p21.lat, (detx / det) * (p2.lng - p1.lng) + p21.lng);
+
+					if ((p21.lat - p2.lat) * (p3.lat - p2.lat) + (p21.lng - p2.lng) * (p3.lng - p2.lng) >= 0) {
+						ar2 = new L.LatLng(a21.lat + 0.5 * (p22.lat - p21.lat), a21.lng + 0.5 * (p22.lng - p21.lng));
+					}
+
 					distance =  p2.distanceTo(a21);
 					dist =  p2.distanceTo(p21);
 					if (distance > dist * SQRT_2) {
@@ -6628,12 +6793,18 @@ L.Control.RSWEIndoor = L.Control.extend({
 					}
 				} else {
 					a21 = new L.LatLng(p21.lat, p21.lng);
+					ar2 = new L.LatLng(p2.lat, p2.lng);
 				}
 
 				det = (p2.lng - p1.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p2.lat - p1.lat);
 				detx = (p32.lng - p22.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p32.lat - p22.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a22 = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p22.lat, (detx / det) * (p2.lng - p1.lng) + p22.lng);
+
+					if ((p21.lat - p2.lat) * (p3.lat - p2.lat) + (p21.lng - p2.lng) * (p3.lng - p2.lng) < 0) {
+						ar2 = new L.LatLng(a22.lat - 0.5 * (p22.lat - p21.lat), a22.lng - 0.5 * (p22.lng - p21.lng));
+					}
+
 					distance =  p2.distanceTo(a22);
 					dist =  p2.distanceTo(p22);
 					if (distance > dist * SQRT_2) {
@@ -6642,6 +6813,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 					}
 				} else {
 					a22 = new L.LatLng(p22.lat, p22.lng);
+					ar2 = new L.LatLng(p2.lat, p2.lng);
 				}
 
 				distance =  p1.distanceTo(p0);
@@ -6653,8 +6825,12 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 				det = (p1.lng - p0.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p1.lat - p0.lat);
 				detx = (p11.lng - p01.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p11.lat - p01.lat);
+
 				if (Math.abs(det) > 0.000000000001) {
 					a11 = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p01.lat, (detx / det) * (p1.lng - p0.lng) + p01.lng);
+					if ((p11.lat - p1.lat) * (p0.lat - p1.lat) + (p11.lng - p1.lng) * (p0.lng - p1.lng) >= 0) {
+						ar1 = new L.LatLng(a11.lat + 0.5 * (p12.lat - p11.lat), a11.lng + 0.5 * (p12.lng - p11.lng));
+					}
 					distance =  p1.distanceTo(a11);
 					dist =  p1.distanceTo(p11);
 					if (distance > dist * SQRT_2) {
@@ -6663,11 +6839,15 @@ L.Control.RSWEIndoor = L.Control.extend({
 					}
 				} else {
 					a11 = new L.LatLng(p01.lat, p01.lng);
+					ar1 = new L.LatLng(p1.lat, p1.lng);
 				}
 				det = (p1.lng - p0.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p1.lat - p0.lat);
 				detx = (p12.lng - p02.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p12.lat - p02.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a12 = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p02.lat, (detx / det) * (p1.lng - p0.lng) + p02.lng);
+					if ((p11.lat - p1.lat) * (p0.lat - p1.lat) + (p11.lng - p1.lng) * (p0.lng - p1.lng) < 0) {
+						ar1 = new L.LatLng(a12.lat - 0.5 * (p12.lat - p11.lat), a12.lng - 0.5 * (p12.lng - p11.lng));
+					}
 					distance =  p1.distanceTo(a12);
 					dist =  p1.distanceTo(p12);
 					if (distance > dist * SQRT_2) {
@@ -6676,6 +6856,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 					}
 				} else {
 					a12 = new L.LatLng(p02.lat, p02.lng);
+					ar1 = new L.LatLng(p1.lat, p1.lng);
 				}
 
 				if ((this.options.layers[roomId] === undefined)) {
@@ -6748,15 +6929,22 @@ L.Control.RSWEIndoor = L.Control.extend({
 					g1.lng + (g2.lat - g1.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (g2.lng - g1.lng) * 0.5);
 
 
+				if (!this._map.RSWEIndoor.options.considerWallThikness) {
+					ar1.lat = p1.lat;
+					ar1.lng = p1.lng;
+					ar2.lat = p2.lat;
+					ar2.lng = p2.lng;
+				}
 
-				p110 = new L.LatLng(p1.lat + (p12.lng - p11.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p12.lat - p11.lat) * 0.25,
-					p1.lng - (p12.lat - p11.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p12.lng - p11.lng) * 0.25);
-				p120 = new L.LatLng(p1.lat - (p11.lng - p12.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p11.lat - p12.lat) * 0.25,
-					p1.lng + (p11.lat - p12.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p11.lng - p12.lng) * 0.25);
-				p210 = new L.LatLng(p2.lat - (p22.lng - p21.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p22.lat - p21.lat) * 0.25,
-					p2.lng + (p22.lat - p21.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p22.lng - p21.lng) * 0.25);
-				p220 = new L.LatLng(p2.lat + (p21.lng - p22.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p21.lat - p22.lat) * 0.25,
-					p2.lng - (p21.lat - p22.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p21.lng - p22.lng) * 0.25);
+				ar11 = new L.LatLng(ar1.lat + (p12.lng - p11.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p12.lat - p11.lat) * 0.25,
+					ar1.lng - (p12.lat - p11.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p12.lng - p11.lng) * 0.25);
+				ar12 = new L.LatLng(ar1.lat - (p11.lng - p12.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p11.lat - p12.lat) * 0.25,
+					ar1.lng + (p11.lat - p12.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p11.lng - p12.lng) * 0.25);
+				ar21 = new L.LatLng(ar2.lat - (p22.lng - p21.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p22.lat - p21.lat) * 0.25,
+					ar2.lng + (p22.lat - p21.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p22.lng - p21.lng) * 0.25);
+				ar22 = new L.LatLng(ar2.lat + (p21.lng - p22.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p21.lat - p22.lat) * 0.25,
+					ar2.lng - (p21.lat - p22.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p21.lng - p22.lng) * 0.25);
+
 
 
 				center1 = new L.LatLng(0.5 * (p11.lat + p21.lat), 0.5 * (p11.lng + p21.lng));
@@ -6765,6 +6953,9 @@ L.Control.RSWEIndoor = L.Control.extend({
 				heightPoint1 = new L.LatLng(center1.lat + p12.lat - p11.lat, center1.lng + p12.lng - p11.lng);
 				heightPoint2 = new L.LatLng(center2.lat + p11.lat - p12.lat, center2.lng + p11.lng - p12.lng);
 
+
+
+				
 				this.options.controlLayerGrp.addLayer(layer);
 
 				for (var j = 0, n = this.options.snapOptions.snapLayersArray.length; j < n; j++) {
@@ -6788,21 +6979,21 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 
 					if (this._map.RSWEIndoor.options.showSizeArrows) {
-						distance =  p2.distanceTo(p1);
+						distance =  ar2.distanceTo(ar1);
 						if (distance > _dontShowSmallSizeLabels) {
 //arrow body
-							controlWall = new L.Polyline([p1, p2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall = new L.Polyline([ar1, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
 							controlWall.options.layerType = 'size-arrows';//'control';
 							this.options.drawnWallsLayerGrp.addLayer(controlWall);
 							roomWalls.push(controlWall);
 //draw sizes
 //arrow ends
-							controlWall = new L.Polygon([p110, p120, p1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall = new L.Polygon([ar11, ar12, ar1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
 							controlWall.options.layerType = 'size-arrows';//'control';
 							this.options.drawnWallsLayerGrp.addLayer(controlWall);
 							roomWalls.push(controlWall);
 
-							controlWall = new L.Polygon([p210, p220, p2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall = new L.Polygon([ar21, ar22, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
 							controlWall.options.layerType = 'size-arrows';//'control';
 							this.options.drawnWallsLayerGrp.addLayer(controlWall);
 							roomWalls.push(controlWall);
@@ -7151,6 +7342,25 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 
 			}
+			roomcenterH = new L.LatLng(roomcenter.lat + 0.01, roomcenter.lng);
+			distance =  roomcenter.distanceTo(roomcenterH);
+			roomcenterH.lat = roomcenter.lat + (roomcenterH.lat - roomcenter.lat) * 2 * (_WallWidth / distance);
+			roomcenterH.lng = roomcenter.lng + (roomcenterH.lng - roomcenter.lng) * 2 * (_WallWidth / distance);
+
+			roomcenter.lat = roomcenter.lat - (roomcenterH.lat - roomcenter.lat);
+			roomcenter.lng = roomcenter.lng - (roomcenterH.lng - roomcenter.lng);
+
+			if (this._map.RSWEIndoor.options.showSquareLabels) {
+				square = Math.abs(square);
+				if (wallType === 'wall' && layer.isConvex()) {
+					controlWall = new L.ScalableText(' ' + (square + 0.001).toFixed(1) + ' m\u00B2 ', roomcenter, roomcenterH,
+					{'bgColor': 'transparent', 'attributes': {'fill': 'white'}});
+					controlWall.options.layerType = 'square';
+					this.options.drawnWallsLayerGrp.addLayer(controlWall);
+					roomWalls.push(controlWall);
+				}
+			}
+
 			this.options.roomWallsProps[roomId] = roomWallsProps;
 			this.options.roomProps[roomId] = roomProps;
 
@@ -7161,6 +7371,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'size-text') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'window') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'door') { layer.bringToFront(); } });
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'square') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'control') { layer.bringToFront(); } });
 
 	},
@@ -7331,14 +7542,15 @@ L.Control.RSWEIndoor = L.Control.extend({
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'window') { outSVG += self.layerToSVG(layer); }
 		});
-
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'door') { outSVG += self.layerToSVG(layer); }
+		});
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'square') { outSVG += self.layerToSVG(layer); }
 		});
 
 		outSVG += '</svg>';
 		return outSVG;
-
 	},
 	layerToSVG: function (layer) {
 		var bnds = this.options.drawnWallsLayerGrp.getBounds();
@@ -7441,10 +7653,18 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 			if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
 
-			outLayer = '<g><g transform="' + transform + '">' +
-				'<rect x="-2" y="-10" height="10" fill="black" width="' + textWidth * 12 / fontSize  + '"/>' +
-				'<text fill="white" text-anchor="start" y="-1" font-size="12px" font-family="Arial">' +
-				layer._text + '</text></g></g>\r\n';
+			if (layer.options.layerType === 'size-text') {
+				outLayer = '<g><g transform="' + transform + '">' +
+					'<rect x="-2" y="-10" height="10" fill="black" width="' + textWidth * 12 / fontSize  + '"/>' +
+					'<text fill="white" text-anchor="start" y="-1" font-size="12px" font-family="Arial">' +
+					layer._text + '</text></g></g>\r\n';
+			}
+			if (layer.options.layerType === 'square') {
+				outLayer = '<g><g transform="' + transform + '">' +
+//					'<rect x="-4" y="-20" height="20" fill="transparent" width="' + textWidth * 24 / fontSize  + '"/>' +
+					'<text fill="#dddddd" text-anchor="start" y="-2" font-size="24px" font-family="Arial">' +
+					layer._text + '</text></g></g>\r\n';
+			}
 			return outLayer;
 		}
 		return outLayer;
@@ -8228,6 +8448,44 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 							evt.target.value = this._map.RSWEIndoor.options.dontShowSmallSizeLabels;
 						}
 					}
+				}, this);
+			}
+			if (this._map.RSWEIndoor.options.considerWallThikness !== undefined) {
+				elem = L.DomUtil.create('div', 'considerWallThikness-control');
+				tab.appendChild(elem);
+				if (this._map.RSWEIndoor.options.considerWallThikness === true) {
+					elem.innerHTML =
+						'<label><input type="checkbox" checked name="considerWallThikness" value="1" />Consider Wall Thikness</label>';
+				} else {
+					elem.innerHTML =
+						'<label><input type="checkbox" name="considerWallThikness" value="1" />Consider Wall Thikness</label>';
+				}
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.checked) {
+						this._map.RSWEIndoor.options.considerWallThikness = true;
+					} else {
+						this._map.RSWEIndoor.options.considerWallThikness = false;
+					}
+					this._map.fire('redraw:all');
+				}, this);
+			}
+			if (this._map.RSWEIndoor.options.showSquareLabels !== undefined) {
+				elem = L.DomUtil.create('div', 'display-showSquareLabels-control');
+				tab.appendChild(elem);
+				if (this._map.RSWEIndoor.options.showSquareLabels === true) {
+					elem.innerHTML =
+						'<label><input type="checkbox" checked name="showSquareLabels" value="1" />Show Square Labels</label>';
+				} else {
+					elem.innerHTML =
+						'<label><input type="checkbox" name="showSquareLabels" value="1" />Show Square Labels</label>';
+				}
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.checked) {
+						this._map.RSWEIndoor.options.showSquareLabels = true;
+					} else {
+						this._map.RSWEIndoor.options.showSquareLabels = false;
+					}
+					this._map.fire('redraw:all');
 				}, this);
 			}
 		}
