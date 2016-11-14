@@ -30,7 +30,7 @@
 
 .leaflet-retina .leaflet-draw-toolbar a {
 	background-image: url('../image/spritesheet-rswe-2x.png');
-	background-size: 360px 30px;
+	background-size: 390px 30px;
 	background-repeat: no-repeat;
 }
 
@@ -131,7 +131,8 @@
 }
 
 .leaflet-draw-toolbar .leaflet-draw-draw-rectangle {
-	background-position: -62px -2px;
+	background-position: -360px -2px;
+/*	background-position: -62px -2px;*/
 }
 
 .leaflet-draw-toolbar .leaflet-draw-draw-circle {
@@ -180,6 +181,8 @@
 	background-color: #fff;
 	cursor: crosshair;
 }
+
+
 
 .leaflet-draw-tooltip {
 	background: rgb(54, 54, 54);
@@ -518,7 +521,7 @@ display: none;
 background-image: url("../image/spritesheet-rswe.png");
 background-repeat: no-repeat;
 background-position: -182px -2px;
-background-size: 360px 30px; 
+background-size: 390px 30px; 
 height: 26px;
 width: 26px;
 }
@@ -649,4 +652,4 @@ position: absolute;
 .leaflet-top-menu-link{margin-left:4px;}
 .leaflet-top-menu-spacer{float:left;padding-left:5px;}
 
-.leaflet-marker-icon {box-sizing: initial;}
+.leaflet-marker-icon {box-sizing: initial; cursor: crosshair;}

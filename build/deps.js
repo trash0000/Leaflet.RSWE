@@ -197,12 +197,14 @@ var deps = {
 		src: [
 			'dialog/Leaflet.Dialog.js',
 //			'dialog/Leaflet.Dialog.RoomProps.js',
+			'dialog/Leaflet.Dialog.WallProps.js',
 			'dialog/Leaflet.Dialog.Options.js',
 			'dialog/Leaflet.Dialog.Load.js',
 			'dialog/Leaflet.Dialog.Save.js',
 			'dialog/Leaflet.Dialog.SaveSVG.js',
 			'dialog/Leaflet.Dialog.SavePNG.js',
 			'dialog/Leaflet.Dialog.SaveJPG.js'
+
 		],
 		desc: 'Leaflet.Dialog plugin - Adds Custom Dialogs functionality',
 		deps: ['Core', 'CommonUI']

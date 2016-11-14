@@ -242,10 +242,10 @@ L.Draw.Feature.SnapMixin = {
         }
 
         if (!this._mouseMarker) {
-            this._map.on('layeradd', this._snapOnEnabled, this);
+//            this._map.on('layeradd', this._snapOnEnabled, this);
             return;
-        } else {
-            this._map.off('layeradd', this._snapOnEnabled, this);
+//        } else {
+//            this._map.off('layeradd', this._snapOnEnabled, this);
         }
 
         if (!this._snapper) {
@@ -277,6 +277,8 @@ L.Draw.Feature.SnapMixin = {
     },
 
     _snapOnClick: function (e) {
+//        if (this._mouseMarker) { this._mouseMarker.off('click', this._snapOnClick, this); }
+
         if (this._markers) {
             var markerCount = this._markers.length,
                 marker = this._markers[markerCount - 1];
@@ -296,6 +298,7 @@ L.Draw.Feature.SnapMixin = {
     },
 
     _snapOnDisabled: function () {
+        if (this._mouseMarker) { this._mouseMarker.off('click', this._snapOnClick, this); }
         delete this._snapper;
     }
 };

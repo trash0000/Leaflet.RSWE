@@ -443,6 +443,48 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 					}
 				}, this);
 			}
+/*
+			if (this._map.RSWEIndoor.options.snapOptions.snapRectanglesToGrid !== undefined) {
+				elem = L.DomUtil.create('div', 'display-snap-grid-options-control');
+				tab.appendChild(elem);
+				if (this._map.RSWEIndoor.options.snapOptions.snapRectanglesToGrid === true) {
+					elem.innerHTML =
+						'<label><input type="checkbox" checked name="snapRectanglesToGrid" value="1" /> Snap Rectangles To Grid</label>';
+				} else {
+					elem.innerHTML =
+						'<label><input type="checkbox" name="snapRectanglesToGrid" value="1" /> Snap Rectangles To Grid</label>';
+				}
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.checked) {
+						this._map.RSWEIndoor.options.snapOptions.snapRectanglesToGrid = true;
+						this._map.RSWEIndoor.SetSnapOptions();
+					} else {
+						this._map.RSWEIndoor.options.snapOptions.snapRectanglesToGrid = false;
+						this._map.RSWEIndoor.SetSnapOptions();
+					}
+				}, this);
+			}
+			if (this._map.RSWEIndoor.options.snapOptions.snapRectanglesToObjects !== undefined) {
+				elem = L.DomUtil.create('div', 'display-snap-grid-options-control');
+				tab.appendChild(elem);
+				if (this._map.RSWEIndoor.options.snapOptions.snapRectanglesToObjects === true) {
+					elem.innerHTML =
+						'<label><input type="checkbox" checked name="snapRectanglesToObjects" value="1" /> Snap Rectangles To Objects</label>';
+				} else {
+					elem.innerHTML =
+						'<label><input type="checkbox" name="snapRectanglesToObjects" value="1" /> Snap Rectangles To Objects</label>';
+				}
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.checked) {
+						this._map.RSWEIndoor.options.snapOptions.snapRectanglesToObjects = true;
+						this._map.RSWEIndoor.SetSnapOptions();
+					} else {
+						this._map.RSWEIndoor.options.snapOptions.snapRectanglesToObjects = false;
+						this._map.RSWEIndoor.SetSnapOptions();
+					}
+				}, this);
+			}
+*/
 		}
 	}
 });

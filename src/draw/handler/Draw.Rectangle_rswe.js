@@ -14,6 +14,10 @@ L.Draw.Rectangle = L.Draw.SimpleShape.extend({
 			fillOpacity: 0.5,
 			clickable: true
 		},
+
+		guidelineDistance: 20,
+		maxGuideLineLength: 4000,
+
 		metric: true // Whether to use the metric meaurement system or imperial
 	},
 

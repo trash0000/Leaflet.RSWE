@@ -147,15 +147,16 @@ L.EditToolbar.Delete = L.Handler.extend({
 		}
 		this._markers = [];
 
-		var ll1, llDelete, onClick;
+		var ll1, llDelete, onClick, llngs;
 
 		this._deletableLayers.eachLayer(function (layer) {
-			if (layer.editing._poly !== undefined) {
-				var latlngs = layer.editing._poly._latlngs;
+			if (layer.editing._poly !== undefined || layer.editing._shape !== undefined) {
+				if (layer.editing._poly) { llngs =  layer.editing._poly._latlngs; }
+				if (layer.editing._shape) { llngs =  layer.editing._shape._latlngs; }
 
-				if (latlngs.length < 2) { return; }
+				if (llngs.length < 2) { return; }
 				
-				ll1 = layer.editing._poly._latlngs[0];
+				ll1 = llngs[0];
 
 				llDelete = new L.LatLng(ll1.lat, ll1.lng);
 

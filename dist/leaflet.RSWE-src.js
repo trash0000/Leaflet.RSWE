@@ -1082,8 +1082,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			L.DomEvent.addListener(this._map._container, 'touchmove', this._onMouseMove, this);
 			L.DomEvent.addListener(this._map._container, 'touchend', this._onMouseUp, this);
 
-			this._map.dragging.disable();
-
+			if (this._map.dragging) { this._map.dragging.disable(); }
 		}
 
 	},
@@ -1143,7 +1142,9 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		L.DomEvent.removeListener(this._map._container, 'touchmove', this._onMouseMove);
 		L.DomEvent.removeListener(this._map._container, 'touchend', this._onMouseUp);
 
-		if (this._map.options.dragging) { this._map.dragging.enable(); }
+		if (this._map.dragging) { this._map.dragging.enable(); }
+
+//		if (this._map.options.dragging) { this._map.dragging.enable(); }
 
 	},
 
@@ -1332,7 +1333,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			icon: this.options.icon,
 			className: 'leaflet-div-icon leaflet-editing-icon',
 			draggable: false,
-			clickable: true,
+			clickable: false,
 			zIndexOffset: this.options.zIndexOffset * 2
 		});
 
@@ -1665,44 +1666,83 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 	addHooks: function () {
 		L.Draw.Feature.prototype.addHooks.call(this);
 		if (this._map) {
-			this._mapDraggable = this._map.dragging.enabled();
+//			this._mapDraggable = this._map.dragging.enabled();
 
-			if (this._mapDraggable) {
-				this._map.dragging.disable();
+			if (this._map.dragging) { this._map.dragging.disable();	}
+/*
+			if (!this._mouseMarker) {
+				this._mouseMarker = L.marker(this._map.getCenter(), {
+					icon: L.divIcon({
+						className: 'leaflet-div-icon leaflet-mouse-marker',
+						iconAnchor: [20, 20],
+						iconSize: [40, 40],
+						draggable: true
+
+					}),
+					opacity: 0,
+					zIndexOffset: this.options.zIndexOffset
+				});
 			}
+
+			this._mouseMarker.addTo(this._map);
+//			this._mouseMarker.setLatLng(latlng);
+*/
+
+
 
 			//TODO refactor: move cursor to styles
 			this._container.style.cursor = 'crosshair';
 
 			this._tooltip.updateContent({ text: this._initialLabelText });
 
-			this._map
-				.on('mousedown', this._onMouseDown, this)
-				.on('mousemove', this._onMouseMove, this);
+//			this._map
+//				.on('mousedown', this._onMouseDown, this)
+//				.on('mousemove', this._onMouseMove, this);
+
+			L.DomEvent.addListener(this._map._container, 'mousedown', this._onMouseDown, this);
+			L.DomEvent.addListener(this._map._container, 'mousemove', this._onMouseMove, this);
+			L.DomEvent.addListener(this._map._container, 'mouseup', this._onMouseUp, this);
+
+			L.DomEvent.addListener(this._map._container, 'touchstart', this._onMouseDown, this);
+			L.DomEvent.addListener(this._map._container, 'touchmove', this._onMouseMove, this);
+			L.DomEvent.addListener(this._map._container, 'touchend', this._onMouseUp, this);
+
 		}
 	},
 
 	removeHooks: function () {
 		L.Draw.Feature.prototype.removeHooks.call(this);
 		if (this._map) {
-			if (this._mapDraggable) {
-				this._map.dragging.enable();
-			}
+			if (this._map.dragging) { this._map.dragging.enable(); }
 
 			//TODO refactor: move cursor to styles
 			this._container.style.cursor = '';
 
-			this._map
-				.off('mousedown', this._onMouseDown, this)
-				.off('mousemove', this._onMouseMove, this);
+			L.DomEvent.removeListener(this._map._container, 'mousedown', this._onMouseDown);
+			L.DomEvent.removeListener(this._map._container, 'mousemove', this._onMouseMove);
+			L.DomEvent.removeListener(this._map._container, 'mouseup', this._onMouseUp);
 
-			L.DomEvent.off(document, 'mouseup', this._onMouseUp, this);
+			L.DomEvent.removeListener(this._map._container, 'touchstart', this._onMouseDown);
+			L.DomEvent.removeListener(this._map._container, 'touchmove', this._onMouseMove);
+			L.DomEvent.removeListener(this._map._container, 'touchend', this._onMouseUp);
+
+//			this._map
+//				.off('mousedown', this._onMouseDown, this)
+//				.off('mousemove', this._onMouseMove, this);
+
+//			L.DomEvent.off(document, 'mouseup', this._onMouseUp, this);
 
 			// If the box element doesn't exist they must not have moved the mouse, so don't need to destroy/return
 			if (this._shape) {
 				this._map.removeLayer(this._shape);
 				delete this._shape;
 			}
+/*
+			if (this._mouseMarker) {
+				this._map.removeLayer(this._mouseMarker);
+				delete this._mouseMarker;
+			}
+*/
 		}
 		this._isDrawing = false;
 	},
@@ -1715,21 +1755,68 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 
 	_onMouseDown: function (e) {
 		this._isDrawing = true;
-		this._startLatLng = e.latlng;
 
-		L.DomEvent
-			.on(document, 'mouseup', this._onMouseUp, this)
-			.preventDefault(e.originalEvent);
+		var map = this._map, containerPoint;
+		if (e.touches) {
+			e.clientX = e.touches[0].clientX;
+			e.clientY = e.touches[0].clientY;
+		}
+		if (!map._container) { containerPoint = new L.Point(e.clientX, e.clientY); }
+		var rect = map._container.getBoundingClientRect();
+		containerPoint = new L.Point(
+			e.clientX - rect.left - map._container.clientLeft,
+			e.clientY - rect.top - map._container.clientTop);
+
+		var layerPoint = map.containerPointToLayerPoint(containerPoint),
+		    latlng = map.layerPointToLatLng(layerPoint);
+
+		this._startLatLng = latlng;
+		e.preventDefault();
+
+//		this.fire(e.type, {
+//			latlng: latlng,
+//			layerPoint: layerPoint,
+//			containerPoint: containerPoint,
+//			originalEvent: e
+//		});
+
+
+//		this._startLatLng = e.latlng;
+
+//		L.DomEvent
+//			.on(document, 'mouseup', this._onMouseUp, this)
+//			.preventDefault(e.originalEvent);
 	},
 
 	_onMouseMove: function (e) {
-		var latlng = e.latlng;
+		var map = this._map, containerPoint;
+
+		if (e.touches) {
+			e.clientX = e.touches[0].clientX;
+			e.clientY = e.touches[0].clientY;
+		}
+		if (!map._container) { containerPoint = new L.Point(e.clientX, e.clientY); }
+		var rect = map._container.getBoundingClientRect();
+		containerPoint = new L.Point(
+			e.clientX - rect.left - map._container.clientLeft,
+			e.clientY - rect.top - map._container.clientTop);
+
+		var layerPoint = map.containerPointToLayerPoint(containerPoint),
+		    latlng = map.layerPointToLatLng(layerPoint);
+
+//		this._startLatLng = latlng;
+//		e.preventDefault();
+
+//		var latlng = e.latlng;
 
 		this._tooltip.updatePosition(latlng);
 		if (this._isDrawing) {
 			this._tooltip.updateContent(this._getTooltipText());
 			this._drawShape(latlng);
 		}
+/*
+		if (this._mouseMarker) { this._mouseMarker.setLatLng(latlng); }
+*/
 	},
 
 	_onMouseUp: function () {
@@ -1760,6 +1847,10 @@ L.Draw.Rectangle = L.Draw.SimpleShape.extend({
 			fillOpacity: 0.5,
 			clickable: true
 		},
+
+		guidelineDistance: 20,
+		maxGuideLineLength: 4000,
+
 		metric: true // Whether to use the metric meaurement system or imperial
 	},
 
@@ -2539,11 +2630,11 @@ L.Edit = L.Edit || {};
 L.Edit.SimpleShape = L.Handler.extend({
 	options: {
 		moveIcon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon leaflet-edit-move'
 		}),
 		resizeIcon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
+			iconSize: new L.Point(16, 16),
 			className: 'leaflet-div-icon leaflet-editing-icon leaflet-edit-resize'
 		})
 	},
@@ -4029,7 +4120,8 @@ L.DrawToolbar = L.Toolbar.extend({
 
 		wall: {},
 		window: {},
-		door: {}
+		door: {},
+		rectangle: {}
 
 	},
 
@@ -4059,11 +4151,11 @@ L.DrawToolbar = L.Toolbar.extend({
 				handler: new L.Draw.Polygon(map, this.options.polygon),
 				title: L.drawLocal.draw.toolbar.buttons.polygon
 			},
-			{
-				enabled: this.options.rectangle,
-				handler: new L.Draw.Rectangle(map, this.options.rectangle),
-				title: L.drawLocal.draw.toolbar.buttons.rectangle
-			},
+//			{
+//				enabled: this.options.rectangle,
+//				handler: new L.Draw.Rectangle(map, this.options.rectangle),
+//				title: L.drawLocal.draw.toolbar.buttons.rectangle
+//			},
 			{
 				enabled: this.options.circle,
 				handler: new L.Draw.Circle(map, this.options.circle),
@@ -4089,6 +4181,11 @@ L.DrawToolbar = L.Toolbar.extend({
 				enabled: this.options.door,
 				handler: new L.Draw.Door(map, this.options.door),
 				title: L.drawLocal.draw.toolbar.buttons.door
+			},
+			{
+				enabled: this.options.rectangle,
+				handler: new L.Draw.Rectangle(map, this.options.rectangle),
+				title: L.drawLocal.draw.toolbar.buttons.rectangle
 			}
 
 
@@ -4351,7 +4448,7 @@ L.EditToolbar.Edit = L.Handler.extend({
 //
 //			this._map.on('mousemove', this._onMouseMove, this);
 
-			this._map.dragging.disable();
+			if (this._map.dragging) { this._map.dragging.disable(); }
 
 		}
 	},
@@ -4369,7 +4466,9 @@ L.EditToolbar.Edit = L.Handler.extend({
 //
 //			this._map.off('mousemove', this._onMouseMove, this);
 
-			if (this._map.options.dragging) { this._map.dragging.enable(); }
+			if (this._map.dragging) { this._map.dragging.enable(); }
+
+//			if (this._map.options.dragging) { this._map.dragging.enable(); }
 
 		}
 	},
@@ -4628,15 +4727,16 @@ L.EditToolbar.Delete = L.Handler.extend({
 		}
 		this._markers = [];
 
-		var ll1, llDelete, onClick;
+		var ll1, llDelete, onClick, llngs;
 
 		this._deletableLayers.eachLayer(function (layer) {
-			if (layer.editing._poly !== undefined) {
-				var latlngs = layer.editing._poly._latlngs;
+			if (layer.editing._poly !== undefined || layer.editing._shape !== undefined) {
+				if (layer.editing._poly) { llngs =  layer.editing._poly._latlngs; }
+				if (layer.editing._shape) { llngs =  layer.editing._shape._latlngs; }
 
-				if (latlngs.length < 2) { return; }
+				if (llngs.length < 2) { return; }
 				
-				ll1 = layer.editing._poly._latlngs[0];
+				ll1 = llngs[0];
 
 				llDelete = new L.LatLng(ll1.lat, ll1.lng);
 
@@ -4907,10 +5007,10 @@ L.Draw.Feature.SnapMixin = {
         }
 
         if (!this._mouseMarker) {
-            this._map.on('layeradd', this._snapOnEnabled, this);
+//            this._map.on('layeradd', this._snapOnEnabled, this);
             return;
-        } else {
-            this._map.off('layeradd', this._snapOnEnabled, this);
+//        } else {
+//            this._map.off('layeradd', this._snapOnEnabled, this);
         }
 
         if (!this._snapper) {
@@ -4942,6 +5042,8 @@ L.Draw.Feature.SnapMixin = {
     },
 
     _snapOnClick: function (e) {
+//        if (this._mouseMarker) { this._mouseMarker.off('click', this._snapOnClick, this); }
+
         if (this._markers) {
             var markerCount = this._markers.length,
                 marker = this._markers[markerCount - 1];
@@ -4961,6 +5063,7 @@ L.Draw.Feature.SnapMixin = {
     },
 
     _snapOnDisabled: function () {
+        if (this._mouseMarker) { this._mouseMarker.off('click', this._snapOnClick, this); }
         delete this._snapper;
     }
 };
@@ -6379,7 +6482,6 @@ L.Control.SlideMenu = L.Control.extend({
 
     onAdd: function (map) {
         this._map = map;
-
         this._startPosition = -(parseInt(this.options.width, 10));
         if (this.options.width.indexOf('%') + 1) {
             this._startPosition = this._startPosition * (map.getSize().x) * 0.01;
@@ -6428,38 +6530,41 @@ L.Control.SlideMenu = L.Control.extend({
         this._contents.innerHTML = this._innerHTML;
  
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[0], 'click', function () {
+            this.menuClose();
             var isOpen = this._map.RSWEIndoor.options.dialogs.loadDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.loadDialog.open();
             if (isOpen) { this._map.RSWEIndoor.options.dialogs.loadDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[1], 'click', function () {
+            this.menuClose();
             var isOpen = this._map.RSWEIndoor.options.dialogs.saveDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.saveDialog.open();
             if (isOpen) { this._map.RSWEIndoor.options.dialogs.saveDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[2], 'click', function () {
+            this.menuClose();
             var isOpen = this._map.RSWEIndoor.options.dialogs.saveSVGDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.saveSVGDialog.open();
             if (isOpen) { this._map.RSWEIndoor.options.dialogs.saveSVGDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[3], 'click', function () {
+            this.menuClose();
             var isOpen = this._map.RSWEIndoor.options.dialogs.savePNGDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.savePNGDialog.open();
             if (isOpen) { this._map.RSWEIndoor.options.dialogs.savePNGDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[4], 'click', function () {
+            this.menuClose();
             var isOpen = this._map.RSWEIndoor.options.dialogs.saveJPGDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.saveJPGDialog.open();
             if (isOpen) { this._map.RSWEIndoor.options.dialogs.saveJPGDialog.close(); }
         }, this);
         L.DomEvent.addListener(this._contents.getElementsByTagName('A')[5], 'click', function () {
+            this.menuClose();
             var isOpen = this._map.RSWEIndoor.options.dialogs.optionsDialog._isOpen;
             this._map.RSWEIndoor.options.dialogs.optionsDialog.open();
             if (isOpen) { this._map.RSWEIndoor.options.dialogs.optionsDialog.close(); }
         }, this);
-
-
-//        this._contents.style.clear = 'both';
 
         L.DomEvent.disableClickPropagation(this._menu);
         L.DomEvent
@@ -6467,23 +6572,29 @@ L.Control.SlideMenu = L.Control.extend({
             .on(this.showlink, 'click', function () {
                 // Open
 //                e.stopPropagation();
-                this.showlink.style.display = 'none';
-                this.closeButton.style.display = 'block';
-                this._animate(this._menu, this._startPosition, 0, true);
+                this.menuOpen();
             }, this)
 //            .on(closeButton, 'click', L.DomEvent.stopPropagation)
             .on(this.closeButton, 'click', function () {
                 // Close
 //                e.stopPropagation();
-                this.showlink.style.display = 'block';
-                this.closeButton.style.display = 'none';
-                this._animate(this._menu, 0, this._startPosition, false);
+                this.menuClose();
             }, this);
 
         if (this.options.isOpen) { this._animate(this._menu, this._startPosition, 0, true); }
         else { this._animate(this._menu, 0, this._startPosition, false); }
 
         return this._container;
+    },
+    menuOpen: function () {
+        this.showlink.style.display = 'none';
+        this.closeButton.style.display = 'block';
+        this._animate(this._menu, this._startPosition, 0, true);
+    },
+    menuClose: function () {
+        this.showlink.style.display = 'block';
+        this.closeButton.style.display = 'none';
+        this._animate(this._menu, 0, this._startPosition, false);
     },
 
     setContents: function (innerHTML) {
@@ -6571,6 +6682,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 			snapWallsToObjects: false,
 			snapWindowsToObjects: true,
 			snapDoorsToObjects: true,
+//			snapRectanglesToGrid: true,
+//			snapRectanglesToObjects: false,
 			snapLayersArray: []
 		},
 		dialogs: {
@@ -6658,11 +6771,9 @@ L.Control.RSWEIndoor = L.Control.extend({
 			return;
 		}
 
-//		if ((layerType !== 'wall') && (layerType !== 'window') && (layerType !== 'door')) {
-//			return;
-//		}
 
-		var _WallWidth = this.options.wallWidth * 0.5;
+
+//		var _WallWidth = this.options.wallWidth * 0.5;
 
 		var _dontShowSmallSizeLabels = this.options.dontShowSmallSizeLabels;
 
@@ -6675,6 +6786,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		var roomProps;
 
+//getting roomId for current layer
 		for (roomId = 0; roomId < this.options.layers.length; roomId++) {
 			if (layer === this.options.layers[roomId].controlLayer) {
 				for (i = 0; i < this.options.layers[roomId].roomWalls.length; i++) {
@@ -6688,62 +6800,119 @@ L.Control.RSWEIndoor = L.Control.extend({
 			}
 		}
 
+//declare variables
+		var _gapStart, _gapEnd, _wallType, _halfWallWidth;
+
 		var latLngs = layer._latlngs;
 
-		var SQRT_2 = Math.sqrt(2);
+//		var SQRT_2 = Math.sqrt(2);
 		var pointsCount = latLngs.length,
-			distance = 0, dist = 0,
+			distanceP0P1, distanceP1P2, distanceP2P3, distance,// dist = 0,
 			det, detx,
 			coslat1, coslat2,
 			p0, p1, p2, p3,
-			p01, p02, p11, p12, p21, p22, p31, p32,
-			a11, a12, a21, a22,
-			ar1, ar2, ar11, ar12, ar21, ar22,
+			p1L, p1R, p2L, p2R, p3L, p3R, p0L, p0R, a1R, a1L, a2R, a2L,
+			p1L1, p1R1, p2L1, p2R1,
+			p1L0, p1R0, p2L2, p2R2,
+			c1L, c1R, c2L, c2R,
+			ar1, ar2,
+			ar1L, ar1R, ar2L, ar2R,
 			g1, g2, g11, g12, g21, g22,
 			d01, d11, d12, d02, d21, d22,
 			center, center1, heightPoint1, center2, heightPoint2,
-			roomcenter, roomcenterH, square;
+			roomcenter, roomcenterH, roomcenterL, square;
+//			tmpLatLng;
 
-		var gapStart, gapEnd, wallType;
+		var getLeftClickFunc = function (roomId, wallId) { return function () { this.ChangeWallType(roomId, wallId); }; };
 
-		var getRightClickFunc = function (roomId, wallId) { return function () { this.ChangeWallType(roomId, wallId); }; };
+		var _dlgWallProps = new L.Control.Dialog.WallProps().addTo(map);
+		var getRightClickFunc = function (roomId, wallId) {
+			return function () {
+				_dlgWallProps.setDlgInputs(roomId, wallId);
+				_dlgWallProps.open();
+			};
+		};
 
-		if (pointsCount > 1) {
+		if (latLngs.length > 1) {
 //bugfix: correcting situation in case zero distance between verticies delete merged verticies
-			roomcenter = new L.LatLng(0, 0);
-			square = 0;
 
-			for (i = 0; i <= pointsCount - 1; i++) {
+//remove layer double-points
+			for (i = 0, pointsCount = latLngs.length; i < pointsCount; i++) {
 				p1 = new L.LatLng(latLngs[(i) % pointsCount].lat, latLngs[(i) % pointsCount].lng);
 				p2 = new L.LatLng(latLngs[(i + 1) % pointsCount].lat, latLngs[(i + 1) % pointsCount].lng);
-				distance =  p2.distanceTo(p1);
-				coslat1 = Math.cos(p1.lat * Math.PI / 180);
-				if (Math.abs(distance) < 0.000000000001) {
+				distanceP1P2 =  p2.distanceTo(p1);
+				p1 = undefined;
+				p2 = undefined;
+				if (Math.abs(distanceP1P2) < 0.000000000001) {
 					latLngs.splice();
 					latLngs.splice(i + 1, 1);
 					i--;
 					pointsCount--;
 					continue;
 				}
-
-				coslat1 = Math.cos(p1.lat * Math.PI / 180);
-
-				square += 0.5 * (p2.lng * p1.lat - p1.lng * p2.lat) * 6378137 * 6378137 * Math.PI * Math.PI / (coslat1 * 180 * 180);
-				roomcenter.lat += p1.lat / (pointsCount);
-				roomcenter.lng += p1.lng / (pointsCount);
+			}
+//calculate square and central point
+			roomcenter = new L.LatLng(0, 0);
+			square = 0;
+			for (i = 0; i <= pointsCount - 1; i++) {
+				square += 0.5 * (latLngs[(i + 1) % pointsCount].lng * latLngs[(i) % pointsCount].lat -
+					latLngs[(i) % pointsCount].lng * latLngs[(i + 1) % pointsCount].lat) *
+					6378137 * 6378137 * Math.PI * Math.PI / (Math.cos(latLngs[(i) % pointsCount].lat * Math.PI / 180) * 180 * 180);
+				roomcenter.lat += latLngs[(i) % pointsCount].lat / (pointsCount);
+				roomcenter.lng += latLngs[(i) % pointsCount].lng / (pointsCount);
 			}
 
 			roomWalls = [];
 
-			for (i = 0; i <= pointsCount; i++) {
+			for (wallId = 0; wallId < pointsCount; wallId++) {
+
+//				wallId = i;
+
+//default settings for new layers
+				if ((this.options.layers[roomId] === undefined)) { this.options.layers[roomId] = {}; }
+				if ((this.options.roomProps[roomId] === undefined)) { this.options.roomProps.push({}); }
+
+				roomProps = this.options.roomProps[roomId];
+				roomProps.layerClass = layerClass;
+				roomProps.layerClassOptions = layer.options;
+				roomProps.layerLatlngs = layer.getLatLngs();
+
+				if ((this.options.roomWallsProps[roomId] === undefined)) { this.options.roomWallsProps.push([]); }
+				roomWallsProps = this.options.roomWallsProps[roomId];
+
+				if (!roomWallsProps[wallId]) { roomWallsProps[wallId] = {}; }
+
+				roomWallsProps[wallId] = {
+					wallType: (roomWallsProps[wallId].wallType ? roomWallsProps[wallId].wallType : 'wall'),
+					wallWidth: (roomWallsProps[wallId].wallWidth ? roomWallsProps[wallId].wallWidth : this.options.wallWidth)
+				};
+
+				if (layerType === 'rectangle') { roomWallsProps[wallId].wallType = 'rectangle'; }
+				if (layerType === 'wall') { roomWallsProps[wallId].wallType = 'wall'; }
+				if (layerType === 'window') { roomWallsProps[wallId].wallType = 'window'; }
+				if (layerType === 'door') { roomWallsProps[wallId].wallType = 'door1'; }
+			}
+
+			for (i = 0, pointsCount = latLngs.length; i < pointsCount; i++) {
+//set cycle variables
+
+				wallId = i;
+//we don't store gaps
+				_gapStart = 0;//gapStart = roomWallsProps[wallId].gapStart;
+				_gapEnd = 100;//gapEnd = roomWallsProps[wallId].gapEnd;
+				_wallType = roomWallsProps[i].wallType;
+				_halfWallWidth = roomWallsProps[i].wallWidth * 0.5;
+
+				var _halfWallWidth0 = roomWallsProps[(i + pointsCount - 1) % (pointsCount)].wallWidth * 0.5;
+				var _halfWallWidth1 = roomWallsProps[(i) % (pointsCount)].wallWidth * 0.5;
+				var _halfWallWidth2 = roomWallsProps[(i + 1) % (pointsCount)].wallWidth * 0.5;
+
 				p1 = new L.LatLng(latLngs[(i) % pointsCount].lat, latLngs[(i) % pointsCount].lng);
 				p2 = new L.LatLng(latLngs[(i + 1) % pointsCount].lat, latLngs[(i + 1) % pointsCount].lng);
 
-				wallId = i;
 
-				if (i > pointsCount - 2 && layerClass === 'polyline') {
-					continue;
-				}
+				if (i > pointsCount - 2 && layerClass === 'polyline') { continue; }
+				if (i === pointsCount && layerClass === 'rectangle') { continue; }
 
 				if (i === 0 && layerClass === 'polyline') {
 					p0 = new L.LatLng(p1.lat + p1.lat - p2.lat, p1.lng + p1.lng - p2.lng);
@@ -6759,159 +6928,145 @@ L.Control.RSWEIndoor = L.Control.extend({
 				coslat1 = Math.cos(p1.lat * Math.PI / 180);
 				coslat2 = Math.cos(p2.lat * Math.PI / 180);
 
-				distance =  p2.distanceTo(p1);
+				distanceP0P1 =  p0.distanceTo(p1);
+				distanceP1P2 =  p2.distanceTo(p1);
+				distanceP2P3 =  p2.distanceTo(p3);
 
-				p11 = new L.LatLng(p1.lat + (p2.lng - p1.lng) * ((_WallWidth / distance) * coslat1),
-					p1.lng - (p2.lat - p1.lat) * ((_WallWidth / distance) / coslat1));
-				p12 = new L.LatLng(p1.lat - (p2.lng - p1.lng) * ((_WallWidth / distance) * coslat1),
-					p1.lng + (p2.lat - p1.lat) * ((_WallWidth / distance) / coslat1));
-				p21 = new L.LatLng(p2.lat + (p2.lng - p1.lng) * ((_WallWidth / distance) * coslat2),
-					p2.lng - (p2.lat - p1.lat) * ((_WallWidth / distance) / coslat2));
-				p22 = new L.LatLng(p2.lat - (p2.lng - p1.lng) * ((_WallWidth / distance) * coslat2),
-					p2.lng + (p2.lat - p1.lat) * ((_WallWidth / distance) / coslat2));
+				p1L = new L.LatLng(p1.lat + (p2.lng - p1.lng) * ((_halfWallWidth1 / distanceP1P2) * coslat1),
+					p1.lng - (p2.lat - p1.lat) * ((_halfWallWidth1 / distanceP1P2) / coslat1));
+				p1R = new L.LatLng(p1.lat - (p2.lng - p1.lng) * ((_halfWallWidth1 / distanceP1P2) * coslat1),
+					p1.lng + (p2.lat - p1.lat) * ((_halfWallWidth1 / distanceP1P2) / coslat1));
+				p2L = new L.LatLng(p2.lat + (p2.lng - p1.lng) * ((_halfWallWidth1 / distanceP1P2) * coslat2),
+					p2.lng - (p2.lat - p1.lat) * ((_halfWallWidth1 / distanceP1P2) / coslat2));
+				p2R = new L.LatLng(p2.lat - (p2.lng - p1.lng) * ((_halfWallWidth1 / distanceP1P2) * coslat2),
+					p2.lng + (p2.lat - p1.lat) * ((_halfWallWidth1 / distanceP1P2) / coslat2));
 
-				distance =  p3.distanceTo(p2);
+				p2L = new L.LatLng(p2.lat + (p2.lng - p1.lng) * ((_halfWallWidth1 / distanceP1P2) * coslat2),
+					p2.lng - (p2.lat - p1.lat) * ((_halfWallWidth1 / distanceP1P2) / coslat2));
+				p2R = new L.LatLng(p2.lat - (p2.lng - p1.lng) * ((_halfWallWidth1 / distanceP1P2) * coslat2),
+					p2.lng + (p2.lat - p1.lat) * ((_halfWallWidth1 / distanceP1P2) / coslat2));
 
-				p31 = new L.LatLng(p2.lat + (p3.lng - p2.lng) * ((_WallWidth / distance) * coslat2),
-					p2.lng - (p3.lat - p2.lat) * ((_WallWidth / distance) / coslat2));
-				p32 = new L.LatLng(p2.lat - (p3.lng - p2.lng) * ((_WallWidth / distance) * coslat2),
-					p2.lng + (p3.lat - p2.lat) * ((_WallWidth / distance) / coslat2));
+				p3L = new L.LatLng(p3.lat + (p3.lng - p2.lng) * ((_halfWallWidth2 / distanceP2P3) * coslat2),
+					p3.lng - (p3.lat - p2.lat) * ((_halfWallWidth2 / distanceP2P3) / coslat2));
+				p3R = new L.LatLng(p3.lat - (p3.lng - p2.lng) * ((_halfWallWidth2 / distanceP2P3) * coslat2),
+					p3.lng + (p3.lat - p2.lat) * ((_halfWallWidth2 / distanceP2P3) / coslat2));
+
+				p0L = new L.LatLng(p0.lat + (p1.lng - p0.lng) * ((_halfWallWidth0 / distanceP0P1) * coslat1),
+					p0.lng - (p1.lat - p0.lat) * ((_halfWallWidth0 / distanceP0P1) / coslat1));
+				p0R = new L.LatLng(p0.lat - (p1.lng - p0.lng) * ((_halfWallWidth0 / distanceP0P1) * coslat1),
+					p0.lng + (p1.lat - p0.lat) * ((_halfWallWidth0 / distanceP0P1) / coslat1));
+
+				p1L0 = new L.LatLng(p1.lat + (p1.lng - p0.lng) * ((_halfWallWidth0 / distanceP0P1) * coslat1),
+					p1.lng - (p1.lat - p0.lat) * ((_halfWallWidth0 / distanceP0P1) / coslat1));
+				p1R0 = new L.LatLng(p1.lat - (p1.lng - p0.lng) * ((_halfWallWidth0 / distanceP0P1) * coslat1),
+					p1.lng + (p1.lat - p0.lat) * ((_halfWallWidth0 / distanceP0P1) / coslat1));
+
+				p2L2 = new L.LatLng(p2.lat + (p3.lng - p2.lng) * ((_halfWallWidth2 / distanceP2P3) * coslat2),
+					p2.lng - (p3.lat - p2.lat) * ((_halfWallWidth2 / distanceP2P3) / coslat2));
+				p2R2 = new L.LatLng(p2.lat - (p3.lng - p2.lng) * ((_halfWallWidth2 / distanceP2P3) * coslat2),
+					p2.lng + (p3.lat - p2.lat) * ((_halfWallWidth2 / distanceP2P3) / coslat2));
+
 				det = (p2.lng - p1.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p2.lat - p1.lat);
-				detx = (p31.lng - p21.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p31.lat - p21.lat);
+				detx = (p2L2.lng - p2L.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p2L2.lat - p2L.lat);
 				if (Math.abs(det) > 0.000000000001) {
-					a21 = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p21.lat, (detx / det) * (p2.lng - p1.lng) + p21.lng);
-
-					if ((p21.lat - p2.lat) * (p3.lat - p2.lat) + (p21.lng - p2.lng) * (p3.lng - p2.lng) >= 0) {
-						ar2 = new L.LatLng(a21.lat + 0.5 * (p22.lat - p21.lat), a21.lng + 0.5 * (p22.lng - p21.lng));
-					}
-
-					distance =  p2.distanceTo(a21);
-					dist =  p2.distanceTo(p21);
-					if (distance > dist * SQRT_2) {
-						a21.lat = p2.lat + SQRT_2 * (a21.lat - p2.lat) * (dist / distance);
-						a21.lng = p2.lng + SQRT_2 * (a21.lng - p2.lng) * (dist / distance);
-					}
+					a2L = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p2L.lat, (detx / det) * (p2.lng - p1.lng) + p2L.lng);
+					p2L1 = L.GeometryUtil.closestOnSegment(map,
+						a2L,
+						new L.LatLng(p2L.lat - (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
+						p2L.lng - (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2),
+						new L.LatLng(p2L.lat + (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
+						p2L.lng + (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2));
+					c2L = L.GeometryUtil.closestOnSegment(map,
+						a2L,
+						new L.LatLng(p2L2.lat + (p3.lat - p2.lat) * (_halfWallWidth2) / distanceP2P3,
+						p2L2.lng + (p3.lng - p2.lng) * (_halfWallWidth2) / distanceP2P3),
+						new L.LatLng(p2L2.lat - (p3.lat - p2.lat) * (_halfWallWidth2) / distanceP2P3,
+						p2L2.lng - (p3.lng - p2.lng) * (_halfWallWidth2) / distanceP2P3));
 				} else {
-					a21 = new L.LatLng(p21.lat, p21.lng);
-					ar2 = new L.LatLng(p2.lat, p2.lng);
+					p2L1 = new L.LatLng(p2L.lat, p2L.lng);
+					c2L = new L.LatLng(p2L2.lat, p2L2.lng);
 				}
+				ar2L = new L.LatLng(p2L1.lat + 0.5 * (p2R.lat - p2L.lat), p2L1.lng + 0.5 * (p2R.lng - p2L.lng));
 
 				det = (p2.lng - p1.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p2.lat - p1.lat);
-				detx = (p32.lng - p22.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p32.lat - p22.lat);
-				if (Math.abs(det) > 0.000000000001) {
-					a22 = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p22.lat, (detx / det) * (p2.lng - p1.lng) + p22.lng);
-
-					if ((p21.lat - p2.lat) * (p3.lat - p2.lat) + (p21.lng - p2.lng) * (p3.lng - p2.lng) < 0) {
-						ar2 = new L.LatLng(a22.lat - 0.5 * (p22.lat - p21.lat), a22.lng - 0.5 * (p22.lng - p21.lng));
-					}
-
-					distance =  p2.distanceTo(a22);
-					dist =  p2.distanceTo(p22);
-					if (distance > dist * SQRT_2) {
-						a22.lat = p2.lat + SQRT_2 * (a22.lat - p2.lat) * (dist / distance);
-						a22.lng = p2.lng + SQRT_2 * (a22.lng - p2.lng) * (dist / distance);
-					}
+				detx = (p2R2.lng - p2R.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p2R2.lat - p2R.lat);
+				if ((Math.abs(det) > 0.000000000001)) {
+					a2R = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p2R.lat, (detx / det) * (p2.lng - p1.lng) + p2R.lng);
+					p2R1 = L.GeometryUtil.closestOnSegment(map,
+						a2R,
+						new L.LatLng(p2R.lat - (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
+						p2R.lng - (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2),
+						new L.LatLng(p2R.lat + (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
+						p2R.lng + (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2));
+					c2R = L.GeometryUtil.closestOnSegment(map,
+						a2R,
+						new L.LatLng(p2R2.lat + (p3.lat - p2.lat) * (_halfWallWidth2) / distanceP2P3,
+						p2R2.lng + (p3.lng - p2.lng) * (_halfWallWidth2) / distanceP2P3),
+						new L.LatLng(p2R2.lat - (p3.lat - p2.lat) * (_halfWallWidth2) / distanceP2P3,
+						p2R2.lng - (p3.lng - p2.lng) * (_halfWallWidth2) / distanceP2P3));
 				} else {
-					a22 = new L.LatLng(p22.lat, p22.lng);
-					ar2 = new L.LatLng(p2.lat, p2.lng);
+					p2R1 = new L.LatLng(p2R.lat, p2R.lng);
+					c2R = new L.LatLng(p2R2.lat, p2R2.lng);
 				}
-
-				distance =  p1.distanceTo(p0);
-
-				p01 = new L.LatLng(p1.lat + (p1.lng - p0.lng) * ((_WallWidth / distance) * coslat1),
-					p1.lng - (p1.lat - p0.lat) * ((_WallWidth / distance) / coslat1));
-				p02 = new L.LatLng(p1.lat - (p1.lng - p0.lng) * ((_WallWidth / distance) * coslat1),
-					p1.lng + (p1.lat - p0.lat) * ((_WallWidth / distance) / coslat1));
+				ar2R = new L.LatLng(p2R1.lat - 0.5 * (p2R.lat - p2L.lat), p2R1.lng - 0.5 * (p2R.lng - p2L.lng));
 
 				det = (p1.lng - p0.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p1.lat - p0.lat);
-				detx = (p11.lng - p01.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p11.lat - p01.lat);
-
+				detx = (p1L.lng - p1L0.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p1L.lat - p1L0.lat);
 				if (Math.abs(det) > 0.000000000001) {
-					a11 = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p01.lat, (detx / det) * (p1.lng - p0.lng) + p01.lng);
-					if ((p11.lat - p1.lat) * (p0.lat - p1.lat) + (p11.lng - p1.lng) * (p0.lng - p1.lng) >= 0) {
-						ar1 = new L.LatLng(a11.lat + 0.5 * (p12.lat - p11.lat), a11.lng + 0.5 * (p12.lng - p11.lng));
-					}
-					distance =  p1.distanceTo(a11);
-					dist =  p1.distanceTo(p11);
-					if (distance > dist * SQRT_2) {
-						a11.lat = p1.lat + SQRT_2 * (a11.lat - p1.lat) * (dist / distance);
-						a11.lng = p1.lng + SQRT_2 * (a11.lng - p1.lng) * (dist / distance);
-					}
+					a1L = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p1L0.lat, (detx / det) * (p1.lng - p0.lng) + p1L0.lng);
+					p1L1 = L.GeometryUtil.closestOnSegment(map,
+						a1L,
+						new L.LatLng(p1L.lat + (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
+						p1L.lng + (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2),
+						new L.LatLng(p1L.lat - (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
+						p1L.lng - (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2));
+					c1L = L.GeometryUtil.closestOnSegment(map,
+						a1L,
+						new L.LatLng(p1L0.lat + (p0.lat - p1.lat) * (_halfWallWidth0) / distanceP0P1,
+						p1L0.lng + (p0.lng - p1.lng) * (_halfWallWidth0) / distanceP0P1),
+						new L.LatLng(p1L0.lat - (p0.lat - p1.lat) * (_halfWallWidth0) / distanceP0P1,
+						p1L0.lng - (p0.lng - p1.lng) * (_halfWallWidth0) / distanceP0P1));
 				} else {
-					a11 = new L.LatLng(p01.lat, p01.lng);
-					ar1 = new L.LatLng(p1.lat, p1.lng);
+					p1L1 = new L.LatLng(p1L.lat, p1L.lng);
+					c1L = new L.LatLng(p1L0.lat, p1L0.lng);
 				}
+				ar1L = new L.LatLng(p1L1.lat + 0.5 * (p1R.lat - p1L.lat), p1L1.lng + 0.5 * (p1R.lng - p1L.lng));
+
 				det = (p1.lng - p0.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p1.lat - p0.lat);
-				detx = (p12.lng - p02.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p12.lat - p02.lat);
+				detx = (p1R.lng - p1R0.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p1R.lat - p1R0.lat);
 				if (Math.abs(det) > 0.000000000001) {
-					a12 = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p02.lat, (detx / det) * (p1.lng - p0.lng) + p02.lng);
-					if ((p11.lat - p1.lat) * (p0.lat - p1.lat) + (p11.lng - p1.lng) * (p0.lng - p1.lng) < 0) {
-						ar1 = new L.LatLng(a12.lat - 0.5 * (p12.lat - p11.lat), a12.lng - 0.5 * (p12.lng - p11.lng));
-					}
-					distance =  p1.distanceTo(a12);
-					dist =  p1.distanceTo(p12);
-					if (distance > dist * SQRT_2) {
-						a12.lat = p1.lat + SQRT_2 * (a12.lat - p1.lat) * (dist / distance);
-						a12.lng = p1.lng + SQRT_2 * (a12.lng - p1.lng) * (dist / distance);
-					}
+					a1R = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p1R0.lat, (detx / det) * (p1.lng - p0.lng) + p1R0.lng);
+					p1R1 = L.GeometryUtil.closestOnSegment(map,
+						a1R,
+						new L.LatLng(p1R.lat + (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
+						p1R.lng + (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2),
+						new L.LatLng(p1R.lat - (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
+						p1R.lng - (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2));
+					c1R = L.GeometryUtil.closestOnSegment(map,
+						a1R,
+						new L.LatLng(p1R0.lat + (p0.lat - p1.lat) * (_halfWallWidth0) / distanceP0P1,
+						p1R0.lng + (p0.lng - p1.lng) * (_halfWallWidth0) / distanceP0P1),
+						new L.LatLng(p1R0.lat - (p0.lat - p1.lat) * (_halfWallWidth0) / distanceP0P1,
+						p1R0.lng - (p0.lng - p1.lng) * (_halfWallWidth0) / distanceP0P1));
 				} else {
-					a12 = new L.LatLng(p02.lat, p02.lng);
-					ar1 = new L.LatLng(p1.lat, p1.lng);
+					p1R1 = new L.LatLng(p1R.lat, p1R.lng);
+					c1R = new L.LatLng(p1R0.lat, p1R0.lng);
 				}
+				ar1R = new L.LatLng(p1R1.lat + 0.5 * (p1L.lat - p1R.lat), p1R1.lng + 0.5 * (p1L.lng - p1R.lng));
 
-				if ((this.options.layers[roomId] === undefined)) {
-					this.options.layers[roomId] = {};
-				}
+				g1 = new L.LatLng(p1.lat * (1.0 - 0.01 * _gapStart) + p2.lat * 0.01 * _gapStart,
+					p1.lng * (1.0 - 0.01 * _gapStart)  + p2.lng * _gapStart * 0.01);
+				g2 = new L.LatLng(p1.lat * (1.0 - 0.01 * _gapEnd) + p2.lat * 0.01 * _gapEnd,
+					p1.lng * (1.0 - 0.01 * _gapEnd) + p2.lng * 0.01 * _gapEnd);
 
-				if ((this.options.roomProps[roomId] === undefined)) { this.options.roomProps.push({}); }
-				roomProps = this.options.roomProps[roomId];
-
-				roomProps.layerClass = layerClass;
-				roomProps.layerClassOptions = layer.options;
-				roomProps.layerLatlngs = layer.getLatLngs();
-
-				if ((this.options.roomWallsProps[roomId] === undefined)) { this.options.roomWallsProps.push([]); }
-
-				roomWallsProps = this.options.roomWallsProps[roomId];
-
-// initial wall settings
-
-				if (!roomWallsProps[wallId]) {
-					roomWallsProps[wallId] = {
-//we don't store gaps
-//						gapStart: 0,
-//						gapEnd: 100,
-						wallType: 'wall'
-//we don't use wall property dialogs
-//						dlgRoomProps: {}
-					};
-					if (layerType === 'wall') { roomWallsProps[wallId].wallType = 'wall'; }
-					if (layerType === 'window') { roomWallsProps[wallId].wallType = 'window'; }
-					if (layerType === 'door') { roomWallsProps[wallId].wallType = 'door1'; }
-				}
-
-//				gapStart = roomWallsProps[wallId].gapStart;
-//				gapEnd = roomWallsProps[wallId].gapEnd;
-				gapStart = 0;
-				gapEnd = 100;
-				wallType = roomWallsProps[wallId].wallType;
-
-
-				g1 = new L.LatLng(p1.lat * (1.0 - 0.01 * gapStart) + p2.lat * 0.01 * gapStart,
-					p1.lng * (1.0 - 0.01 * gapStart)  + p2.lng * gapStart * 0.01);
-				g2 = new L.LatLng(p1.lat * (1.0 - 0.01 * gapEnd) + p2.lat * 0.01 * gapEnd,
-					p1.lng * (1.0 - 0.01 * gapEnd) + p2.lng * 0.01 * gapEnd);
-
-
-				g11 = new L.LatLng(p11.lat * (1.0 - 0.01 * gapStart) + p21.lat * 0.01 * gapStart,
-					p11.lng * (1.0 - 0.01 * gapStart)  + p21.lng * gapStart * 0.01);
-				g12 = new L.LatLng(p12.lat * (1.0 -  0.01 * gapStart) + p22.lat * 0.01 * gapStart,
-					p12.lng * (1.0 - 0.01 * gapStart) + p22.lng * 0.01 * gapStart);
-				g21 = new L.LatLng(p11.lat * (1.0 - 0.01 * gapEnd) + p21.lat * 0.01 * gapEnd,
-					p11.lng * (1.0 - 0.01 * gapEnd) + p21.lng * 0.01 * gapEnd);
-				g22 = new L.LatLng(p12.lat * (1.0 - 0.01 * gapEnd) + p22.lat * 0.01 * gapEnd,
-					p12.lng  * (1.0 - 0.01 * gapEnd) + p22.lng * 0.01 * gapEnd);
-
+				g11 = new L.LatLng(p1L.lat * (1.0 - 0.01 * _gapStart) + p2L.lat * 0.01 * _gapStart,
+					p1L.lng * (1.0 - 0.01 * _gapStart)  + p2L.lng * _gapStart * 0.01);
+				g12 = new L.LatLng(p1R.lat * (1.0 -  0.01 * _gapStart) + p2R.lat * 0.01 * _gapStart,
+					p1R.lng * (1.0 - 0.01 * _gapStart) + p2R.lng * 0.01 * _gapStart);
+				g21 = new L.LatLng(p1L.lat * (1.0 - 0.01 * _gapEnd) + p2L.lat * 0.01 * _gapEnd,
+					p1L.lng * (1.0 - 0.01 * _gapEnd) + p2L.lng * 0.01 * _gapEnd);
+				g22 = new L.LatLng(p1R.lat * (1.0 - 0.01 * _gapEnd) + p2R.lat * 0.01 * _gapEnd,
+					p1R.lng  * (1.0 - 0.01 * _gapEnd) + p2R.lng * 0.01 * _gapEnd);
 
 				d11 = new L.LatLng(g1.lat + (g2.lng - g1.lng) * ((0.5) * coslat1),
 					g1.lng - (g2.lat - g1.lat) * ((0.5) / coslat1));
@@ -6928,33 +7083,30 @@ L.Control.RSWEIndoor = L.Control.extend({
 				d02 = new L.LatLng(g1.lat - (g2.lng - g1.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (g2.lat - g1.lat) * 0.5,
 					g1.lng + (g2.lat - g1.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (g2.lng - g1.lng) * 0.5);
 
+				ar1 = L.GeometryUtil.closestOnSegment(map, p1, p1, p2);
+				ar2 = L.GeometryUtil.closestOnSegment(map, p2, p1, p2);
 
-				if (!this._map.RSWEIndoor.options.considerWallThikness) {
-					ar1.lat = p1.lat;
-					ar1.lng = p1.lng;
-					ar2.lat = p2.lat;
-					ar2.lng = p2.lng;
+				if (this._map.RSWEIndoor.options.considerWallThikness) {
+					ar1 = L.GeometryUtil.closestOnSegment(map, ar1L, new L.LatLng(ar1.lat, ar1.lng), ar2);
+					ar1 = L.GeometryUtil.closestOnSegment(map, ar1R, new L.LatLng(ar1.lat, ar1.lng), ar2);
+					ar2 = L.GeometryUtil.closestOnSegment(map, ar2L, ar1, new L.LatLng(ar2.lat, ar2.lng));
+					ar2 = L.GeometryUtil.closestOnSegment(map, ar2R, ar1, new L.LatLng(ar2.lat, ar2.lng));
 				}
 
-				ar11 = new L.LatLng(ar1.lat + (p12.lng - p11.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p12.lat - p11.lat) * 0.25,
-					ar1.lng - (p12.lat - p11.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p12.lng - p11.lng) * 0.25);
-				ar12 = new L.LatLng(ar1.lat - (p11.lng - p12.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p11.lat - p12.lat) * 0.25,
-					ar1.lng + (p11.lat - p12.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p11.lng - p12.lng) * 0.25);
-				ar21 = new L.LatLng(ar2.lat - (p22.lng - p21.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p22.lat - p21.lat) * 0.25,
-					ar2.lng + (p22.lat - p21.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p22.lng - p21.lng) * 0.25);
-				ar22 = new L.LatLng(ar2.lat + (p21.lng - p22.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p21.lat - p22.lat) * 0.25,
-					ar2.lng - (p21.lat - p22.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p21.lng - p22.lng) * 0.25);
+				ar1L = new L.LatLng(ar1.lat + (p1R.lng - p1L.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p1R.lat - p1L.lat) * 0.25,
+					ar1.lng - (p1R.lat - p1L.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p1R.lng - p1L.lng) * 0.25);
+				ar1R = new L.LatLng(ar1.lat - (p1L.lng - p1R.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p1L.lat - p1R.lat) * 0.25,
+					ar1.lng + (p1L.lat - p1R.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p1L.lng - p1R.lng) * 0.25);
+				ar2L = new L.LatLng(ar2.lat - (p2R.lng - p2L.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p2R.lat - p2L.lat) * 0.25,
+					ar2.lng + (p2R.lat - p2L.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p2R.lng - p2L.lng) * 0.25);
+				ar2R = new L.LatLng(ar2.lat + (p2L.lng - p2R.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p2L.lat - p2R.lat) * 0.25,
+					ar2.lng - (p2L.lat - p2R.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p2L.lng - p2R.lng) * 0.25);
 
-
-
-				center1 = new L.LatLng(0.5 * (p11.lat + p21.lat), 0.5 * (p11.lng + p21.lng));
-				center2 = new L.LatLng(0.5 * (p12.lat + p22.lat), 0.5 * (p12.lng + p22.lng));
+				center1 = new L.LatLng(0.5 * (p1L.lat + p2L.lat), 0.5 * (p1L.lng + p2L.lng));
+				center2 = new L.LatLng(0.5 * (p1R.lat + p2R.lat), 0.5 * (p1R.lng + p2R.lng));
 				center = new L.LatLng(0.5 * (p1.lat + p2.lat), 0.5 * (p1.lng + p2.lng));
-				heightPoint1 = new L.LatLng(center1.lat + p12.lat - p11.lat, center1.lng + p12.lng - p11.lng);
-				heightPoint2 = new L.LatLng(center2.lat + p11.lat - p12.lat, center2.lng + p11.lng - p12.lng);
-
-
-
+				heightPoint1 = new L.LatLng(center1.lat + p1R.lat - p1L.lat, center1.lng + p1R.lng - p1L.lng);
+				heightPoint2 = new L.LatLng(center2.lat + p1L.lat - p1R.lat, center2.lng + p1L.lng - p1R.lng);
 				
 				this.options.controlLayerGrp.addLayer(layer);
 
@@ -6963,15 +7115,15 @@ L.Control.RSWEIndoor = L.Control.extend({
 				}
 				if (j === n) { this.options.snapOptions.snapLayersArray.push(layer); }
 
-				if (wallType === 'wall') {
+				if (_wallType === 'wall') {
 
 //draw one rectangle and four triangles instead of one trapecium
 //to avoid problems for very small angles
-////					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+////					controlWall = new L.polygon([p1L1, p2L1, p2R1, p1R1], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 ////					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 ////					controlWall.bringToBack();
 ////					roomWalls.push(controlWall);
-////					wall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+////					wall = new L.polygon([p1L1, p2L1, p2R1, p1R1], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 ////					this.options.drawnWallsLayerGrp.addLayer(wall);
 ////					wall.bringToBack();
 ////					roomWalls.push(wall);
@@ -6988,12 +7140,12 @@ L.Control.RSWEIndoor = L.Control.extend({
 							roomWalls.push(controlWall);
 //draw sizes
 //arrow ends
-							controlWall = new L.Polygon([ar11, ar12, ar1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall = new L.Polygon([ar1L, ar1R, ar1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
 							controlWall.options.layerType = 'size-arrows';//'control';
 							this.options.drawnWallsLayerGrp.addLayer(controlWall);
 							roomWalls.push(controlWall);
 
-							controlWall = new L.Polygon([ar21, ar22, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							controlWall = new L.Polygon([ar2L, ar2R, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
 							controlWall.options.layerType = 'size-arrows';//'control';
 							this.options.drawnWallsLayerGrp.addLayer(controlWall);
 							roomWalls.push(controlWall);
@@ -7010,53 +7162,44 @@ L.Control.RSWEIndoor = L.Control.extend({
 						}
 					}
 
-//rectangle
-					wall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+//basic trapezium
+					wall = new L.Polygon([p1, p1L1, p2L1, p2, p2R1, p1R1],
+						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 //corners
-					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, c1L, p1L1, p1, c1R, p1R1], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					wall.options.layerType = 'wall';
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					roomWalls.push(wall);
-
-					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
-					wall.options.layerType = 'wall';
-					this.options.drawnWallsLayerGrp.addLayer(wall);
-					roomWalls.push(wall);
-
-					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, c2L, p2L1, p2, c2R, p2R1], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 //transparent click layer
-					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p1L, p2L, p2R, p1R], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					roomWalls.push(controlWall);
 
-				} else if (wallType === 'gap') {
-////					controlWall = new L.polygon([a11, a21, a22, a12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+				} else if (_wallType === 'gap') {
+////					controlWall = new L.polygon([p1L1, p2L1, p2R1, p1R1], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 ////					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 ////					controlWall.bringToBack();
 ////					roomWalls.push(controlWall);
-////					wall = new L.polygon([a12, g12, g11, a11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+////					wall = new L.polygon([p1R1, g12, g11, p1L1], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 ////					this.options.drawnWallsLayerGrp.addLayer(wall);
 ////					wall.bringToBack();
 ////					roomWalls.push(wall);
 
-					wall = new L.Polygon([p12, g12, g11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1R, g12, g11, p1L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2R, g22, g21, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
@@ -7066,58 +7209,58 @@ L.Control.RSWEIndoor = L.Control.extend({
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2L1, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2R1, p2R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1L1, p1L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1R1, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'wall';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p1L, p2L, p2R, p1R], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					roomWalls.push(controlWall);
 
-				} else if (wallType === 'window') {
-					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+				} else if (_wallType === 'window') {
+					wall = new L.Polygon([p1L, g11, g12, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2R, g22, g21, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2L1, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2R1, p2R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1L1, p1L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1R1, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'window';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
@@ -7143,38 +7286,38 @@ L.Control.RSWEIndoor = L.Control.extend({
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p1L, p2L, p2R, p1R], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					roomWalls.push(controlWall);
 
-				} else if (wallType === 'door1') {
-					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+				} else if (_wallType === 'door1') {
+					wall = new L.Polygon([p1L, g11, g12, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2R, g22, g21, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2L1, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2R1, p2R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1L1, p1L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1R1, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
@@ -7190,37 +7333,37 @@ L.Control.RSWEIndoor = L.Control.extend({
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p1L, p2L, p2R, p1R], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					roomWalls.push(controlWall);
-				} else if (wallType === 'door2') {
-					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+				} else if (_wallType === 'door2') {
+					wall = new L.Polygon([p1L, g11, g12, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2R, g22, g21, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2L1, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2R1, p2R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1L1, p1L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1R1, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
@@ -7236,37 +7379,37 @@ L.Control.RSWEIndoor = L.Control.extend({
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p1L, p2L, p2R, p1R], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					roomWalls.push(controlWall);
-				} else if (wallType === 'door3') {
-					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+				} else if (_wallType === 'door3') {
+					wall = new L.Polygon([p1L, g11, g12, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2R, g22, g21, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2L1, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2R1, p2R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1L1, p1L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1R1, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
@@ -7282,37 +7425,37 @@ L.Control.RSWEIndoor = L.Control.extend({
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p1L, p2L, p2R, p1R], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
 					controlWall.options.layerType = 'control';
 					roomWalls.push(controlWall);
-				} else if (wallType === 'door4') {
-					wall = new L.Polygon([p11, g11, g12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+				} else if (_wallType === 'door4') {
+					wall = new L.Polygon([p1L, g11, g12, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p22, g22, g21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2R, g22, g21, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a21, p21], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2L1, p2L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p2, a22, p22], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p2, p2R1, p2R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a11, p11], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1L1, p1L], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					wall = new L.Polygon([p1, a12, p12], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall = new L.Polygon([p1, p1R1, p1R], {color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
 					wall.options.layerType = 'door';
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
@@ -7328,32 +7471,52 @@ L.Control.RSWEIndoor = L.Control.extend({
 					this.options.drawnWallsLayerGrp.addLayer(wall);
 					roomWalls.push(wall);
 
-					controlWall = new L.Polygon([p11, p21, p22, p12], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
+					controlWall = new L.Polygon([p1L, p2L, p2R, p1R], {color: '#000000', weight: 1, opacity: 0, fillOpacity: 0});
 					controlWall.options.layerType = 'control';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-					roomWalls.push(controlWall);
+				} else if (_wallType === 'rectangle') {
+					wall = new L.Polygon([p1, p2, roomcenter], {fillColor: '#ffffff', color: '#ffffff', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'rectangle';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					roomWalls.push(wall);
+
+					wall = new L.Curve(['M', [p1.lat, p1.lng], 'L', [p2.lat, p2.lng] ],
+						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'rectangle';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					roomWalls.push(wall);
+					wall = new L.Curve(['M', [(p1.lat + roomcenter.lat) / 2, (p1.lng + roomcenter.lng) / 2],
+//						'L', [0.5 * (p1.lat + roomcenter.lat), 0.5 * (p1.lng + roomcenter.lng)],
+						'Q', [(8 * p1.lat + 8 * p2.lat + 1 * roomcenter.lat) / 17, (8 * p1.lng + 8 * p2.lng + 1 * roomcenter.lng) / 17],
+						[(p2.lat + roomcenter.lat) / 2, (p2.lng + roomcenter.lng) / 2]],
+						{color: '#000000', weight: 1, opacity: 1, fillOpacity: 1});
+					wall.options.layerType = 'rectangle';
+					this.options.drawnWallsLayerGrp.addLayer(wall);
+					roomWalls.push(wall);
+
 				}
 
 				this.options.controlLayerGrp.bringToBack();
 
 				if (controlWall) { controlWall.on('contextmenu', getRightClickFunc(roomId, wallId), this); }
-//dont' use wall property dialogs
-//				wall.on('contextmenu', rightClickFunc, roomWallsPropsItem.dlgRoomProps);
-
+				if (controlWall) { controlWall.on('click', getLeftClickFunc(roomId, wallId), this); }
 
 			}
+
 			roomcenterH = new L.LatLng(roomcenter.lat + 0.01, roomcenter.lng);
 			distance =  roomcenter.distanceTo(roomcenterH);
-			roomcenterH.lat = roomcenter.lat + (roomcenterH.lat - roomcenter.lat) * 2 * (_WallWidth / distance);
-			roomcenterH.lng = roomcenter.lng + (roomcenterH.lng - roomcenter.lng) * 2 * (_WallWidth / distance);
+			roomcenterH.lat = roomcenter.lat + (roomcenterH.lat - roomcenter.lat) * 2 * (_halfWallWidth / distance);
+			roomcenterH.lng = roomcenter.lng + (roomcenterH.lng - roomcenter.lng) * 2 * (_halfWallWidth / distance);
 
-			roomcenter.lat = roomcenter.lat - (roomcenterH.lat - roomcenter.lat);
-			roomcenter.lng = roomcenter.lng - (roomcenterH.lng - roomcenter.lng);
+			roomcenterL = new L.LatLng(roomcenter.lat - (roomcenterH.lat - roomcenter.lat), roomcenter.lng - (roomcenterH.lng - roomcenter.lng));
+
+//			roomcenter.lat = roomcenter.lat - (roomcenterH.lat - roomcenter.lat);
+//			roomcenter.lng = roomcenter.lng - (roomcenterH.lng - roomcenter.lng);
 
 			if (this._map.RSWEIndoor.options.showSquareLabels) {
 				square = Math.abs(square);
-				if (wallType === 'wall' && layer.isConvex()) {
-					controlWall = new L.ScalableText(' ' + (square + 0.001).toFixed(1) + ' m\u00B2 ', roomcenter, roomcenterH,
+				if (_wallType === 'wall' && layer.isConvex()) {
+					controlWall = new L.ScalableText(' ' + (square + 0.001).toFixed(1) + ' m\u00B2 ', roomcenterL, roomcenterH,
 					{'bgColor': 'transparent', 'attributes': {'fill': 'white'}});
 					controlWall.options.layerType = 'square';
 					this.options.drawnWallsLayerGrp.addLayer(controlWall);
@@ -7361,17 +7524,21 @@ L.Control.RSWEIndoor = L.Control.extend({
 				}
 			}
 
+//save structures
 			this.options.roomWallsProps[roomId] = roomWallsProps;
 			this.options.roomProps[roomId] = roomProps;
 
 			this.options.layers[roomId] = {controlLayer: layer, roomWalls: roomWalls};
+
 		}
 
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'rectangle') { layer.bringToFront(); } });
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'wall') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'size-arrows') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'size-text') { layer.bringToFront(); } });
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'square') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'window') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'door') { layer.bringToFront(); } });
-		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'square') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'control') { layer.bringToFront(); } });
 
 	},
@@ -7414,6 +7581,14 @@ L.Control.RSWEIndoor = L.Control.extend({
 				snapToObjects: this.options.snapOptions.snapDoorsToObjects,
 				guideLayers: this.options.snapOptions.snapLayersArray,
 				snapDistance: 6}
+/*
+			rectangle: { snapType: 'rectangle',
+				gridStep: this.options.snapOptions.gridStep,
+				snapToGrid: this.options.snapOptions.snapRectanglesToGrid,
+				snapToObjects: this.options.snapOptions.snapRectanglesToObjects,
+				guideLayers: this.options.snapOptions.snapLayersArray,
+				snapDistance: 6}
+*/
 		});
 	},
 //	getJsonData: function () {
@@ -7529,6 +7704,10 @@ L.Control.RSWEIndoor = L.Control.extend({
 			 '" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">\r\n';
 
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'rectangle') { outSVG += self.layerToSVG(layer); }
+		});
+
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'wall') { outSVG += self.layerToSVG(layer); }
 		});
 
@@ -7572,6 +7751,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 				var name = layer._path.attributes[key].name;
 				var value = layer._path.attributes[key].value;
 				if ((name === 'fill') && (layer instanceof L.Polygon) && layer.options.layerType === 'door') { value = '#ffffff'; }
+				if ((name === 'fill') && (layer instanceof L.Polygon) && layer.options.layerType === 'rectangle') { value = '#dddddd'; }
 				if ((name === 'stroke-opacity') && (layer instanceof L.Polygon)) { value = '0'; }
 				if (name !== 'class' && name !== 'd') { attributes += ' ' + name + '="' + value + '"'; }
 			}
@@ -7580,7 +7760,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 		if (layer instanceof L.Polygon &&
 			 (layer.options.layerType === 'wall' ||
 			 layer.options.layerType === 'window' ||
-			 layer.options.layerType === 'door')) {
+			 layer.options.layerType === 'door' ||
+			 layer.options.layerType === 'rectangle')) {
 //we fill two overlapped poligons translated to 1 pixel cause preventing rasterization effects
 			for (i = 0, len2 = layer._latlngs.length; i < len2; i++) {
 				p = layer._latlngs[i];
@@ -7700,6 +7881,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		this.options.roomProps.forEach(function (item) {
 			var layer;
+			if (item.layerClass === 'rectangle') { layer = new L.Rectangle(item.layerLatlngs, item.layerClassOptions); }
 			if (item.layerClass === 'polyline') { layer = new L.Polyline(item.layerLatlngs, item.layerClassOptions); }
 			if (item.layerClass === 'polygon') { layer = new L.Polygon(item.layerLatlngs, item.layerClassOptions); }
 			if (layer) {
@@ -7768,34 +7950,48 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.on('draw:drawstart', function (e) {
 			layer = e.layer;
-
+/*
 			if (e.layerType === 'marker') {
 				if (layer._mouseMarker.snapediting !== undefined) {
 					layer._mouseMarker.snapediting.disable();
 					delete layer._mouseMarker.snapediting;
 				}
-				layer._mouseMarker.snapediting = new L.Handler.MarkerSnap(map, layer._mouseMarker);
-				layer._mouseMarker.snapediting._snapper._guides = map.RSWEIndoor.options.snapOptions.snapLayersArray;
-				layer._mouseMarker.snapediting.enable();
+				layer._mouseMarker._snapper = new L.Handler.MarkerSnap(map, layer._mouseMarker);
+				layer._mouseMarker._snapper._guides = map.RSWEIndoor.options.snapOptions.snapLayersArray;
+				layer._mouseMarker._snapper.enable();
 			}
+			if (e.layerType === 'rectangle') {
+				if (layer._mouseMarker) {
+					if (layer._mouseMarker.snapediting !== undefined) {
+						layer._mouseMarker.snapediting.disable();
+						delete layer._mouseMarker.snapediting;
+					}
+					layer._mouseMarker._snapper = new L.Handler.MarkerSnap(map, layer._mouseMarker);
+					layer._mouseMarker._snapper._guides = map.RSWEIndoor.options.snapOptions.snapLayersArray;
+					layer._mouseMarker._snapper.enable();
+				}
+			}
+*/
 			if ((e.layerType === 'wall') || (e.layerType === 'window') || (e.layerType === 'door')) {
 				map.RSWEIndoor.SetSnapOptions();
-				layer._poly.snapediting = new L.Handler.PolylineSnap(map, layer._poly);
-				layer._poly.snapediting._snapper._guides = map.RSWEIndoor.options.snapOptions.snapLayersArray;
-				layer._poly.snapediting._snapper.options.gridStep = map.RSWEIndoor.options.snapOptions.gridStep;
-				if (e.layerType === 'wall') {
-					layer._poly.snapediting._snapper.options.snapToGrid = map.RSWEIndoor.options.snapOptions.snapWallsToGrid;
-					layer._poly.snapediting._snapper.options.snapToObjects = map.RSWEIndoor.options.snapOptions.snapWallsToObjects;
+				if (layer._poly !== undefined || layer._poly.snapediting !== undefined) {
+					layer._poly.snapediting = new L.Handler.PolylineSnap(map, layer._poly);
+					layer._poly.snapediting._snapper._guides = map.RSWEIndoor.options.snapOptions.snapLayersArray;
+					layer._poly.snapediting._snapper.options.gridStep = map.RSWEIndoor.options.snapOptions.gridStep;
+					if (e.layerType === 'wall') {
+						layer._poly.snapediting._snapper.options.snapToGrid = map.RSWEIndoor.options.snapOptions.snapWallsToGrid;
+						layer._poly.snapediting._snapper.options.snapToObjects = map.RSWEIndoor.options.snapOptions.snapWallsToObjects;
+					}
+					if (e.layerType === 'window') {
+						layer._poly.snapediting._snapper.options.snapToGrid = map.RSWEIndoor.options.snapOptions.snapWindowsToGrid;
+						layer._poly.snapediting._snapper.options.snapToObjects = map.RSWEIndoor.options.snapOptions.snapWindowsToObjects;
+					}
+					if (e.layerType === 'door') {
+						layer._poly.snapediting._snapper.options.snapToGrid = map.RSWEIndoor.options.snapOptions.snapDoorsToGrid;
+						layer._poly.snapediting._snapper.options.snapToObjects = map.RSWEIndoor.options.snapOptions.snapDoorsToObjects;
+					}
+					layer._poly.snapediting.enable();
 				}
-				if (e.layerType === 'window') {
-					layer._poly.snapediting._snapper.options.snapToGrid = map.RSWEIndoor.options.snapOptions.snapWindowsToGrid;
-					layer._poly.snapediting._snapper.options.snapToObjects = map.RSWEIndoor.options.snapOptions.snapWindowsToObjects;
-				}
-				if (e.layerType === 'door') {
-					layer._poly.snapediting._snapper.options.snapToGrid = map.RSWEIndoor.options.snapOptions.snapDoorsToGrid;
-					layer._poly.snapediting._snapper.options.snapToObjects = map.RSWEIndoor.options.snapOptions.snapDoorsToObjects;
-				}
-				layer._poly.snapediting.enable();
 			}
 		});
 
@@ -7838,6 +8034,10 @@ L.Control.RSWEIndoor = L.Control.extend({
 						layer.snapediting.disable();
 						delete layer.snapediting;
 					}
+				}
+				if (layer._mouseMarker && layer._mouseMarker._snapper) {
+					layer._mouseMarker._snapper.disable();
+					delete layer._mouseMarker._snapper;
 				}
 			}, map);
 		});
@@ -8238,6 +8438,172 @@ L.Control.Dialog = L.Control.extend({
 L.control.dialog = function (options) {
     return new L.Control.Dialog(options);
 };
+
+L.Control.Dialog.WallProps = L.Control.Dialog.extend({
+	options: {
+		size: [ 320, 200 ],
+		minSize: [ 320, 200 ],
+		maxSize: [ 350, 350 ],
+		anchor: [ 50, 50 ],
+		position: 'topleft',
+		initOpen: false
+	},
+	_isOpen: false,
+	_innerHTML: {},
+	_curRoomId: 0,
+	_curWallId: 0,
+
+	initialize: function () {
+
+		L.setOptions(this, this.options);
+		L.Control.Dialog.prototype.initialize.call(this, this.options);
+	},
+	_getTabCount: function () {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes.length;
+	},
+	_getTab: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i];
+	},
+	_getTabTitle: function (i) {
+		return this._container.firstChild.firstChild.firstChild.getElementsByTagName('UL')[0].childNodes[i];
+	},
+	_getTabContainer: function (i) {
+		return this._container.firstChild.firstChild.firstChild.lastChild.childNodes[i].childNodes[0];
+	},
+
+	_selectTab: function (idx) {
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) {
+			var _tab = this._getTab(i);
+			var _tabTitle = this._getTabTitle(i);
+			if (idx !== i) {
+				_tab.setAttribute('class', 'dialog-tab');
+				_tabTitle.setAttribute('class', 'dialog-tab-title');
+			} else {
+				_tab.setAttribute('class', 'dialog-tab selected');
+				_tabTitle.setAttribute('class', 'dialog-tab-title selected-li');
+			}
+		}
+	},
+	onAdd: function (map) {
+//prototupe call
+		this._container = L.Control.Dialog.prototype.onAdd.call(this, map);
+
+		this._map = map;
+		var mapSize = map.getSize();
+
+//init dialog size and position
+
+		this.options.size = [ Math.floor(0.5 * mapSize.x), Math.floor(0.5 * mapSize.y) ];
+		this.options.size = [ Math.max(this.options.size[0], this.options.minSize[0]), Math.max(this.options.size[1], this.options.minSize[1]) ];
+		this.options.anchor = [ Math.floor(0.5 * (mapSize.x - this.options.size[0])), Math.floor(0.5 * (mapSize.y - this.options.size[1])) ];
+
+		this._isOpen = false;
+
+		L.setOptions(this, this.options);
+//init dialog tabs logic
+		var html = this.contents.join('');
+		this.setContent(html);
+		var func =  function (i) {return function () { this._selectTab(i); }; };
+		var tabCount = this._getTabCount();
+		for (var i = 0; i < tabCount; i++) { L.DomEvent.addListener(this._getTabTitle(i), 'click', func(i), this); }
+
+// create another dialog elements, add listeners, etc.
+		this._dlgCreateControls();
+
+//re-close dialog if initOpen==false to awoid some bugs
+		if (!this.options.initOpen) { this.close(); }
+		else { this.open(); }
+
+		return this._container;
+	},
+
+	close: function () {
+		this._isOpen = false;
+		L.Control.Dialog.prototype.close.call(this);
+	},
+	open: function () {
+		this._map.fire('close_all_dialogs');
+		
+		this._isOpen = true;
+		L.Control.Dialog.prototype.open.call(this);
+	},
+
+	contents: [
+		'<div class="dialog-container">',
+		'<ul class="dialog-tabs-title">',
+		'<li class="dialog-tab-title selected-li">Wall options</li>',
+		'</ul>',
+		'<div class="dialog-tabs">',
+		'<div class="dialog-tab selected"><div class="dialog-tab-content"><h3>Wall options</h3></div></div>',
+		'</div>',
+		'</div>',
+		''
+	],
+	saveAsText: function () {
+		var link = this.options.saveALink;
+
+		var filename = 'RSWE.json';
+		if (this.options.InputName.value) { filename = this.options.InputName.value; }
+
+		link.download = filename;
+
+		var data = this._map.RSWEIndoor.getData();
+		link.href = 'data:text/plain;base64,' + L.Util.base64Encode(data);
+
+		link.click();
+		this.close();
+	},
+
+	_dlgCreateControls: function () {
+		var tab, elem;
+		tab = this._getTabContainer(0);
+		if (tab) {
+			elem = L.DomUtil.create('div', 'innerHTML');
+			tab.appendChild(elem);
+			elem.innerHTML = ([
+//				'<a href="" download="" style="display:none;"></a>',
+				'<label><span> Wall width (cm)</span> <input type="text" name="wallWidth" placeholder="Wall width"/></label>',
+//				'&nbsp;<input type="button" value="Save drawing to file"/>',
+//				'<br><br><i>Your drawing will be saved into system \"Download\" folder.</i>'
+				''
+			]).join('');
+			this._innerHTML = elem;
+
+			var InputWallWidth = elem.getElementsByTagName('INPUT')[0];
+
+			L.DomEvent.addListener(InputWallWidth, 'change', this.setWallWidth, this);
+		}
+	},
+	setDlgInputs: function (roomId, wallId) {
+		this._curRoomId = roomId;
+		this._curWallId = wallId;
+		this._curWallWidth = this._map.RSWEIndoor.options.roomWallsProps[roomId][this._curWallId].wallWidth;
+		this._innerHTML.getElementsByTagName('INPUT')[0].value = parseInt(this._curWallWidth * 100, 10);
+		return this;
+	},
+	setWallWidth: function (event) {
+		if (event.target.value) {
+//			var val = event.target.value.replace(new RegExp(',', 'g'), '.');
+			var val = parseInt(event.target.value, 10);
+			if (!isNaN(val) && (val > 0) && (val < 101)) {
+				this._map.RSWEIndoor.options.roomWallsProps[this._curRoomId][this._curWallId].wallWidth = val * 0.01;
+				this.close();
+//				event.target.value = val;
+				this._map.RSWEIndoor.RedrawRoom(this._map.RSWEIndoor.options.layers[this._curRoomId].controlLayer);
+//				this._map.fire('redraw:all');
+			} else {
+				event.target.value = parseInt(this._curWallWidth * 100, 10);
+			}
+		}
+	}
+});
+
+L.control.dialog.wallprops = function (options) {
+    return new L.Control.Dialog.WallProps(options);
+};
+
+
 
 L.Control.Dialog.Options = L.Control.Dialog.extend({
 	options: {
@@ -8684,6 +9050,48 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 					}
 				}, this);
 			}
+/*
+			if (this._map.RSWEIndoor.options.snapOptions.snapRectanglesToGrid !== undefined) {
+				elem = L.DomUtil.create('div', 'display-snap-grid-options-control');
+				tab.appendChild(elem);
+				if (this._map.RSWEIndoor.options.snapOptions.snapRectanglesToGrid === true) {
+					elem.innerHTML =
+						'<label><input type="checkbox" checked name="snapRectanglesToGrid" value="1" /> Snap Rectangles To Grid</label>';
+				} else {
+					elem.innerHTML =
+						'<label><input type="checkbox" name="snapRectanglesToGrid" value="1" /> Snap Rectangles To Grid</label>';
+				}
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.checked) {
+						this._map.RSWEIndoor.options.snapOptions.snapRectanglesToGrid = true;
+						this._map.RSWEIndoor.SetSnapOptions();
+					} else {
+						this._map.RSWEIndoor.options.snapOptions.snapRectanglesToGrid = false;
+						this._map.RSWEIndoor.SetSnapOptions();
+					}
+				}, this);
+			}
+			if (this._map.RSWEIndoor.options.snapOptions.snapRectanglesToObjects !== undefined) {
+				elem = L.DomUtil.create('div', 'display-snap-grid-options-control');
+				tab.appendChild(elem);
+				if (this._map.RSWEIndoor.options.snapOptions.snapRectanglesToObjects === true) {
+					elem.innerHTML =
+						'<label><input type="checkbox" checked name="snapRectanglesToObjects" value="1" /> Snap Rectangles To Objects</label>';
+				} else {
+					elem.innerHTML =
+						'<label><input type="checkbox" name="snapRectanglesToObjects" value="1" /> Snap Rectangles To Objects</label>';
+				}
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.checked) {
+						this._map.RSWEIndoor.options.snapOptions.snapRectanglesToObjects = true;
+						this._map.RSWEIndoor.SetSnapOptions();
+					} else {
+						this._map.RSWEIndoor.options.snapOptions.snapRectanglesToObjects = false;
+						this._map.RSWEIndoor.SetSnapOptions();
+					}
+				}, this);
+			}
+*/
 		}
 	}
 });

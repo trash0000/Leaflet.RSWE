@@ -109,8 +109,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			L.DomEvent.addListener(this._map._container, 'touchmove', this._onMouseMove, this);
 			L.DomEvent.addListener(this._map._container, 'touchend', this._onMouseUp, this);
 
-			this._map.dragging.disable();
-
+			if (this._map.dragging) { this._map.dragging.disable(); }
 		}
 
 	},
@@ -170,7 +169,9 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 		L.DomEvent.removeListener(this._map._container, 'touchmove', this._onMouseMove);
 		L.DomEvent.removeListener(this._map._container, 'touchend', this._onMouseUp);
 
-		if (this._map.options.dragging) { this._map.dragging.enable(); }
+		if (this._map.dragging) { this._map.dragging.enable(); }
+
+//		if (this._map.options.dragging) { this._map.dragging.enable(); }
 
 	},
 
@@ -359,7 +360,7 @@ L.Draw.Polyline = L.Draw.Feature.extend({
 			icon: this.options.icon,
 			className: 'leaflet-div-icon leaflet-editing-icon',
 			draggable: false,
-			clickable: true,
+			clickable: false,
 			zIndexOffset: this.options.zIndexOffset * 2
 		});
 

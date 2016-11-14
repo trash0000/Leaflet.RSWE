@@ -68,7 +68,7 @@ L.EditToolbar.Edit = L.Handler.extend({
 //
 //			this._map.on('mousemove', this._onMouseMove, this);
 
-			this._map.dragging.disable();
+			if (this._map.dragging) { this._map.dragging.disable(); }
 
 		}
 	},
@@ -86,7 +86,9 @@ L.EditToolbar.Edit = L.Handler.extend({
 //
 //			this._map.off('mousemove', this._onMouseMove, this);
 
-			if (this._map.options.dragging) { this._map.dragging.enable(); }
+			if (this._map.dragging) { this._map.dragging.enable(); }
+
+//			if (this._map.options.dragging) { this._map.dragging.enable(); }
 
 		}
 	},

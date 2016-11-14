@@ -15,7 +15,8 @@ L.DrawToolbar = L.Toolbar.extend({
 
 		wall: {},
 		window: {},
-		door: {}
+		door: {},
+		rectangle: {}
 
 	},
 
@@ -45,11 +46,11 @@ L.DrawToolbar = L.Toolbar.extend({
 				handler: new L.Draw.Polygon(map, this.options.polygon),
 				title: L.drawLocal.draw.toolbar.buttons.polygon
 			},
-			{
-				enabled: this.options.rectangle,
-				handler: new L.Draw.Rectangle(map, this.options.rectangle),
-				title: L.drawLocal.draw.toolbar.buttons.rectangle
-			},
+//			{
+//				enabled: this.options.rectangle,
+//				handler: new L.Draw.Rectangle(map, this.options.rectangle),
+//				title: L.drawLocal.draw.toolbar.buttons.rectangle
+//			},
 			{
 				enabled: this.options.circle,
 				handler: new L.Draw.Circle(map, this.options.circle),
@@ -75,6 +76,11 @@ L.DrawToolbar = L.Toolbar.extend({
 				enabled: this.options.door,
 				handler: new L.Draw.Door(map, this.options.door),
 				title: L.drawLocal.draw.toolbar.buttons.door
+			},
+			{
+				enabled: this.options.rectangle,
+				handler: new L.Draw.Rectangle(map, this.options.rectangle),
+				title: L.drawLocal.draw.toolbar.buttons.rectangle
 			}
 
 

@@ -14,44 +14,83 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 	addHooks: function () {
 		L.Draw.Feature.prototype.addHooks.call(this);
 		if (this._map) {
-			this._mapDraggable = this._map.dragging.enabled();
+//			this._mapDraggable = this._map.dragging.enabled();
 
-			if (this._mapDraggable) {
-				this._map.dragging.disable();
+			if (this._map.dragging) { this._map.dragging.disable();	}
+/*
+			if (!this._mouseMarker) {
+				this._mouseMarker = L.marker(this._map.getCenter(), {
+					icon: L.divIcon({
+						className: 'leaflet-div-icon leaflet-mouse-marker',
+						iconAnchor: [20, 20],
+						iconSize: [40, 40],
+						draggable: true
+
+					}),
+					opacity: 0,
+					zIndexOffset: this.options.zIndexOffset
+				});
 			}
+
+			this._mouseMarker.addTo(this._map);
+//			this._mouseMarker.setLatLng(latlng);
+*/
+
+
 
 			//TODO refactor: move cursor to styles
 			this._container.style.cursor = 'crosshair';
 
 			this._tooltip.updateContent({ text: this._initialLabelText });
 
-			this._map
-				.on('mousedown', this._onMouseDown, this)
-				.on('mousemove', this._onMouseMove, this);
+//			this._map
+//				.on('mousedown', this._onMouseDown, this)
+//				.on('mousemove', this._onMouseMove, this);
+
+			L.DomEvent.addListener(this._map._container, 'mousedown', this._onMouseDown, this);
+			L.DomEvent.addListener(this._map._container, 'mousemove', this._onMouseMove, this);
+			L.DomEvent.addListener(this._map._container, 'mouseup', this._onMouseUp, this);
+
+			L.DomEvent.addListener(this._map._container, 'touchstart', this._onMouseDown, this);
+			L.DomEvent.addListener(this._map._container, 'touchmove', this._onMouseMove, this);
+			L.DomEvent.addListener(this._map._container, 'touchend', this._onMouseUp, this);
+
 		}
 	},
 
 	removeHooks: function () {
 		L.Draw.Feature.prototype.removeHooks.call(this);
 		if (this._map) {
-			if (this._mapDraggable) {
-				this._map.dragging.enable();
-			}
+			if (this._map.dragging) { this._map.dragging.enable(); }
 
 			//TODO refactor: move cursor to styles
 			this._container.style.cursor = '';
 
-			this._map
-				.off('mousedown', this._onMouseDown, this)
-				.off('mousemove', this._onMouseMove, this);
+			L.DomEvent.removeListener(this._map._container, 'mousedown', this._onMouseDown);
+			L.DomEvent.removeListener(this._map._container, 'mousemove', this._onMouseMove);
+			L.DomEvent.removeListener(this._map._container, 'mouseup', this._onMouseUp);
 
-			L.DomEvent.off(document, 'mouseup', this._onMouseUp, this);
+			L.DomEvent.removeListener(this._map._container, 'touchstart', this._onMouseDown);
+			L.DomEvent.removeListener(this._map._container, 'touchmove', this._onMouseMove);
+			L.DomEvent.removeListener(this._map._container, 'touchend', this._onMouseUp);
+
+//			this._map
+//				.off('mousedown', this._onMouseDown, this)
+//				.off('mousemove', this._onMouseMove, this);
+
+//			L.DomEvent.off(document, 'mouseup', this._onMouseUp, this);
 
 			// If the box element doesn't exist they must not have moved the mouse, so don't need to destroy/return
 			if (this._shape) {
 				this._map.removeLayer(this._shape);
 				delete this._shape;
 			}
+/*
+			if (this._mouseMarker) {
+				this._map.removeLayer(this._mouseMarker);
+				delete this._mouseMarker;
+			}
+*/
 		}
 		this._isDrawing = false;
 	},
@@ -64,21 +103,68 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 
 	_onMouseDown: function (e) {
 		this._isDrawing = true;
-		this._startLatLng = e.latlng;
 
-		L.DomEvent
-			.on(document, 'mouseup', this._onMouseUp, this)
-			.preventDefault(e.originalEvent);
+		var map = this._map, containerPoint;
+		if (e.touches) {
+			e.clientX = e.touches[0].clientX;
+			e.clientY = e.touches[0].clientY;
+		}
+		if (!map._container) { containerPoint = new L.Point(e.clientX, e.clientY); }
+		var rect = map._container.getBoundingClientRect();
+		containerPoint = new L.Point(
+			e.clientX - rect.left - map._container.clientLeft,
+			e.clientY - rect.top - map._container.clientTop);
+
+		var layerPoint = map.containerPointToLayerPoint(containerPoint),
+		    latlng = map.layerPointToLatLng(layerPoint);
+
+		this._startLatLng = latlng;
+		e.preventDefault();
+
+//		this.fire(e.type, {
+//			latlng: latlng,
+//			layerPoint: layerPoint,
+//			containerPoint: containerPoint,
+//			originalEvent: e
+//		});
+
+
+//		this._startLatLng = e.latlng;
+
+//		L.DomEvent
+//			.on(document, 'mouseup', this._onMouseUp, this)
+//			.preventDefault(e.originalEvent);
 	},
 
 	_onMouseMove: function (e) {
-		var latlng = e.latlng;
+		var map = this._map, containerPoint;
+
+		if (e.touches) {
+			e.clientX = e.touches[0].clientX;
+			e.clientY = e.touches[0].clientY;
+		}
+		if (!map._container) { containerPoint = new L.Point(e.clientX, e.clientY); }
+		var rect = map._container.getBoundingClientRect();
+		containerPoint = new L.Point(
+			e.clientX - rect.left - map._container.clientLeft,
+			e.clientY - rect.top - map._container.clientTop);
+
+		var layerPoint = map.containerPointToLayerPoint(containerPoint),
+		    latlng = map.layerPointToLatLng(layerPoint);
+
+//		this._startLatLng = latlng;
+//		e.preventDefault();
+
+//		var latlng = e.latlng;
 
 		this._tooltip.updatePosition(latlng);
 		if (this._isDrawing) {
 			this._tooltip.updateContent(this._getTooltipText());
 			this._drawShape(latlng);
 		}
+/*
+		if (this._mouseMarker) { this._mouseMarker.setLatLng(latlng); }
+*/
 	},
 
 	_onMouseUp: function () {
