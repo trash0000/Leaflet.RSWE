@@ -15,6 +15,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		showSizeArrows: true,
 		dontShowSmallSizeLabels: 0.5,
 		showSquareLabels: true,
+		dontShowSquaresLessThan: 1.0,
 		considerWallThikness: true,
 		wallWidth: 0.1,
 		pixelsPerMeter: 100,
@@ -153,7 +154,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 //		var SQRT_2 = Math.sqrt(2);
 		var pointsCount = latLngs.length,
 			distanceP0P1, distanceP1P2, distanceP2P3, distance,// dist = 0,
-			det, detx,
+			det, detx, maxHWW,
 			coslat1, coslat2,
 			p0, p1, p2, p3,
 			p1L, p1R, p2L, p2R, p3L, p3R, p0L, p0R, a1R, a1L, a2R, a2L,
@@ -164,7 +165,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 			ar1L, ar1R, ar2L, ar2R,
 			g1, g2, g11, g12, g21, g22,
 			d01, d11, d12, d02, d21, d22,
-			center, center1, heightPoint1, center2, heightPoint2,
+			center, centerL, centerR,// heightPointL, heightPointR,
 			roomcenter, roomcenterH, roomcenterL, square;
 //			tmpLatLng;
 
@@ -315,18 +316,19 @@ L.Control.RSWEIndoor = L.Control.extend({
 				detx = (p2L2.lng - p2L.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p2L2.lat - p2L.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a2L = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p2L.lat, (detx / det) * (p2.lng - p1.lng) + p2L.lng);
+					maxHWW = Math.max(_halfWallWidth1, _halfWallWidth2);
 					p2L1 = L.GeometryUtil.closestOnSegment(map,
 						a2L,
-						new L.LatLng(p2L.lat - (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
-						p2L.lng - (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2),
-						new L.LatLng(p2L.lat + (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
-						p2L.lng + (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2));
+						new L.LatLng(p2L.lat - (p2.lat - p1.lat) * (maxHWW) / distanceP1P2,
+						p2L.lng - (p2.lng - p1.lng) * (maxHWW) / distanceP1P2),
+						new L.LatLng(p2L.lat + (p2.lat - p1.lat) * (maxHWW) / distanceP1P2,
+						p2L.lng + (p2.lng - p1.lng) * (maxHWW) / distanceP1P2));
 					c2L = L.GeometryUtil.closestOnSegment(map,
 						a2L,
-						new L.LatLng(p2L2.lat + (p3.lat - p2.lat) * (_halfWallWidth2) / distanceP2P3,
-						p2L2.lng + (p3.lng - p2.lng) * (_halfWallWidth2) / distanceP2P3),
-						new L.LatLng(p2L2.lat - (p3.lat - p2.lat) * (_halfWallWidth2) / distanceP2P3,
-						p2L2.lng - (p3.lng - p2.lng) * (_halfWallWidth2) / distanceP2P3));
+						new L.LatLng(p2L2.lat + (p3.lat - p2.lat) * (maxHWW) / distanceP2P3,
+						p2L2.lng + (p3.lng - p2.lng) * (maxHWW) / distanceP2P3),
+						new L.LatLng(p2L2.lat - (p3.lat - p2.lat) * (maxHWW) / distanceP2P3,
+						p2L2.lng - (p3.lng - p2.lng) * (maxHWW) / distanceP2P3));
 				} else {
 					p2L1 = new L.LatLng(p2L.lat, p2L.lng);
 					c2L = new L.LatLng(p2L2.lat, p2L2.lng);
@@ -337,18 +339,19 @@ L.Control.RSWEIndoor = L.Control.extend({
 				detx = (p2R2.lng - p2R.lng) * (p3.lat - p2.lat) - (p3.lng - p2.lng) * (p2R2.lat - p2R.lat);
 				if ((Math.abs(det) > 0.000000000001)) {
 					a2R = new L.LatLng((detx / det) * (p2.lat - p1.lat) + p2R.lat, (detx / det) * (p2.lng - p1.lng) + p2R.lng);
+					maxHWW = Math.max(_halfWallWidth1, _halfWallWidth2);
 					p2R1 = L.GeometryUtil.closestOnSegment(map,
 						a2R,
-						new L.LatLng(p2R.lat - (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
-						p2R.lng - (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2),
-						new L.LatLng(p2R.lat + (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
-						p2R.lng + (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2));
+						new L.LatLng(p2R.lat - (p2.lat - p1.lat) * (maxHWW) / distanceP1P2,
+						p2R.lng - (p2.lng - p1.lng) * (maxHWW) / distanceP1P2),
+						new L.LatLng(p2R.lat + (p2.lat - p1.lat) * (maxHWW) / distanceP1P2,
+						p2R.lng + (p2.lng - p1.lng) * (maxHWW) / distanceP1P2));
 					c2R = L.GeometryUtil.closestOnSegment(map,
 						a2R,
-						new L.LatLng(p2R2.lat + (p3.lat - p2.lat) * (_halfWallWidth2) / distanceP2P3,
-						p2R2.lng + (p3.lng - p2.lng) * (_halfWallWidth2) / distanceP2P3),
-						new L.LatLng(p2R2.lat - (p3.lat - p2.lat) * (_halfWallWidth2) / distanceP2P3,
-						p2R2.lng - (p3.lng - p2.lng) * (_halfWallWidth2) / distanceP2P3));
+						new L.LatLng(p2R2.lat + (p3.lat - p2.lat) * (maxHWW) / distanceP2P3,
+						p2R2.lng + (p3.lng - p2.lng) * (maxHWW) / distanceP2P3),
+						new L.LatLng(p2R2.lat - (p3.lat - p2.lat) * (maxHWW) / distanceP2P3,
+						p2R2.lng - (p3.lng - p2.lng) * (maxHWW) / distanceP2P3));
 				} else {
 					p2R1 = new L.LatLng(p2R.lat, p2R.lng);
 					c2R = new L.LatLng(p2R2.lat, p2R2.lng);
@@ -359,18 +362,19 @@ L.Control.RSWEIndoor = L.Control.extend({
 				detx = (p1L.lng - p1L0.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p1L.lat - p1L0.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a1L = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p1L0.lat, (detx / det) * (p1.lng - p0.lng) + p1L0.lng);
+					maxHWW = Math.max(_halfWallWidth1, _halfWallWidth0);
 					p1L1 = L.GeometryUtil.closestOnSegment(map,
 						a1L,
-						new L.LatLng(p1L.lat + (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
-						p1L.lng + (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2),
-						new L.LatLng(p1L.lat - (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
-						p1L.lng - (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2));
+						new L.LatLng(p1L.lat + (p2.lat - p1.lat) * (maxHWW) / distanceP1P2,
+						p1L.lng + (p2.lng - p1.lng) * (maxHWW) / distanceP1P2),
+						new L.LatLng(p1L.lat - (p2.lat - p1.lat) * (maxHWW) / distanceP1P2,
+						p1L.lng - (p2.lng - p1.lng) * (maxHWW) / distanceP1P2));
 					c1L = L.GeometryUtil.closestOnSegment(map,
 						a1L,
-						new L.LatLng(p1L0.lat + (p0.lat - p1.lat) * (_halfWallWidth0) / distanceP0P1,
-						p1L0.lng + (p0.lng - p1.lng) * (_halfWallWidth0) / distanceP0P1),
-						new L.LatLng(p1L0.lat - (p0.lat - p1.lat) * (_halfWallWidth0) / distanceP0P1,
-						p1L0.lng - (p0.lng - p1.lng) * (_halfWallWidth0) / distanceP0P1));
+						new L.LatLng(p1L0.lat + (p0.lat - p1.lat) * (maxHWW) / distanceP0P1,
+						p1L0.lng + (p0.lng - p1.lng) * (maxHWW) / distanceP0P1),
+						new L.LatLng(p1L0.lat - (p0.lat - p1.lat) * (maxHWW) / distanceP0P1,
+						p1L0.lng - (p0.lng - p1.lng) * (maxHWW) / distanceP0P1));
 				} else {
 					p1L1 = new L.LatLng(p1L.lat, p1L.lng);
 					c1L = new L.LatLng(p1L0.lat, p1L0.lng);
@@ -381,18 +385,19 @@ L.Control.RSWEIndoor = L.Control.extend({
 				detx = (p1R.lng - p1R0.lng) * (p2.lat - p1.lat) - (p2.lng - p1.lng) * (p1R.lat - p1R0.lat);
 				if (Math.abs(det) > 0.000000000001) {
 					a1R = new L.LatLng((detx / det) * (p1.lat - p0.lat) + p1R0.lat, (detx / det) * (p1.lng - p0.lng) + p1R0.lng);
+					maxHWW = Math.max(_halfWallWidth1, _halfWallWidth0);
 					p1R1 = L.GeometryUtil.closestOnSegment(map,
 						a1R,
-						new L.LatLng(p1R.lat + (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
-						p1R.lng + (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2),
-						new L.LatLng(p1R.lat - (p2.lat - p1.lat) * (_halfWallWidth1) / distanceP1P2,
-						p1R.lng - (p2.lng - p1.lng) * (_halfWallWidth1) / distanceP1P2));
+						new L.LatLng(p1R.lat + (p2.lat - p1.lat) * (maxHWW) / distanceP1P2,
+						p1R.lng + (p2.lng - p1.lng) * (maxHWW) / distanceP1P2),
+						new L.LatLng(p1R.lat - (p2.lat - p1.lat) * (maxHWW) / distanceP1P2,
+						p1R.lng - (p2.lng - p1.lng) * (maxHWW) / distanceP1P2));
 					c1R = L.GeometryUtil.closestOnSegment(map,
 						a1R,
-						new L.LatLng(p1R0.lat + (p0.lat - p1.lat) * (_halfWallWidth0) / distanceP0P1,
-						p1R0.lng + (p0.lng - p1.lng) * (_halfWallWidth0) / distanceP0P1),
-						new L.LatLng(p1R0.lat - (p0.lat - p1.lat) * (_halfWallWidth0) / distanceP0P1,
-						p1R0.lng - (p0.lng - p1.lng) * (_halfWallWidth0) / distanceP0P1));
+						new L.LatLng(p1R0.lat + (p0.lat - p1.lat) * (maxHWW) / distanceP0P1,
+						p1R0.lng + (p0.lng - p1.lng) * (maxHWW) / distanceP0P1),
+						new L.LatLng(p1R0.lat - (p0.lat - p1.lat) * (maxHWW) / distanceP0P1,
+						p1R0.lng - (p0.lng - p1.lng) * (maxHWW) / distanceP0P1));
 				} else {
 					p1R1 = new L.LatLng(p1R.lat, p1R.lng);
 					c1R = new L.LatLng(p1R0.lat, p1R0.lng);
@@ -438,20 +443,32 @@ L.Control.RSWEIndoor = L.Control.extend({
 					ar2 = L.GeometryUtil.closestOnSegment(map, ar2R, ar1, new L.LatLng(ar2.lat, ar2.lng));
 				}
 
-				ar1L = new L.LatLng(ar1.lat + (p1R.lng - p1L.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p1R.lat - p1L.lat) * 0.25,
-					ar1.lng - (p1R.lat - p1L.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p1R.lng - p1L.lng) * 0.25);
-				ar1R = new L.LatLng(ar1.lat - (p1L.lng - p1R.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (p1L.lat - p1R.lat) * 0.25,
-					ar1.lng + (p1L.lat - p1R.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (p1L.lng - p1R.lng) * 0.25);
-				ar2L = new L.LatLng(ar2.lat - (p2R.lng - p2L.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p2R.lat - p2L.lat) * 0.25,
-					ar2.lng + (p2R.lat - p2L.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p2R.lng - p2L.lng) * 0.25);
-				ar2R = new L.LatLng(ar2.lat + (p2L.lng - p2R.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (p2L.lat - p2R.lat) * 0.25,
-					ar2.lng - (p2L.lat - p2R.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (p2L.lng - p2R.lng) * 0.25);
-
-				center1 = new L.LatLng(0.5 * (p1L.lat + p2L.lat), 0.5 * (p1L.lng + p2L.lng));
-				center2 = new L.LatLng(0.5 * (p1R.lat + p2R.lat), 0.5 * (p1R.lng + p2R.lng));
 				center = new L.LatLng(0.5 * (p1.lat + p2.lat), 0.5 * (p1.lng + p2.lng));
-				heightPoint1 = new L.LatLng(center1.lat + p1R.lat - p1L.lat, center1.lng + p1R.lng - p1L.lng);
-				heightPoint2 = new L.LatLng(center2.lat + p1L.lat - p1R.lat, center2.lng + p1L.lng - p1R.lng);
+
+				centerL = new L.LatLng(center.lat + (p2.lng - p1.lng) * (0.5 * (this.options.wallWidth / distanceP1P2) * coslat1),
+					center.lng - (p2.lat - p1.lat) * (0.5 * (this.options.wallWidth / distanceP1P2) / coslat1));
+				centerR = new L.LatLng(center.lat - (p2.lng - p1.lng) * (0.5 * (this.options.wallWidth / distanceP1P2) * coslat1),
+					center.lng + (p2.lat - p1.lat) * (0.5 * (this.options.wallWidth / distanceP1P2) / coslat1));
+
+
+//				center1 = new L.LatLng(0.5 * (p1L.lat + p2L.lat), 0.5 * (p1L.lng + p2L.lng));
+//				center2 = new L.LatLng(0.5 * (p1R.lat + p2R.lat), 0.5 * (p1R.lng + p2R.lng));
+                
+//				heightPoint1 = new L.LatLng(center1.lat + p1R.lat - p1L.lat, center1.lng + p1R.lng - p1L.lng);
+//				heightPoint2 = new L.LatLng(center2.lat + p1L.lat - p1R.lat, center2.lng + p1L.lng - p1R.lng);
+
+//				heightPoint1 = new L.LatLng(centerL.lat, centerL.lng);
+//				heightPoint2 = new L.LatLng(centerR.lat, centerR.lng);
+
+				ar1L = new L.LatLng(ar1.lat + (centerR.lng - centerL.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (centerR.lat - centerL.lat) * 0.25,
+					ar1.lng - (centerR.lat - centerL.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (centerR.lng - centerL.lng) * 0.25);
+				ar1R = new L.LatLng(ar1.lat - (centerL.lng - centerR.lng) * (0.5 * Math.sqrt(3)) * coslat1 + (centerL.lat - centerR.lat) * 0.25,
+					ar1.lng + (centerL.lat - centerR.lat) * ((0.5 * Math.sqrt(3)) / coslat1) + (centerL.lng - centerR.lng) * 0.25);
+				ar2L = new L.LatLng(ar2.lat - (centerR.lng - centerL.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (centerR.lat - centerL.lat) * 0.25,
+					ar2.lng + (centerR.lat - centerL.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (centerR.lng - centerL.lng) * 0.25);
+				ar2R = new L.LatLng(ar2.lat + (centerL.lng - centerR.lng) * (0.5 * Math.sqrt(3)) * coslat1 - (centerL.lat - centerR.lat) * 0.25,
+					ar2.lng - (centerL.lat - centerR.lat) * ((0.5 * Math.sqrt(3)) / coslat1) - (centerL.lng - centerR.lng) * 0.25);
+
 				
 				this.options.controlLayerGrp.addLayer(layer);
 
@@ -495,11 +512,11 @@ L.Control.RSWEIndoor = L.Control.extend({
 							this.options.drawnWallsLayerGrp.addLayer(controlWall);
 							roomWalls.push(controlWall);
 //lenght scalabletext
-							if (center1.lat > center2.lat) {
-								controlWall = new L.ScalableText(' ' + (distance + 0.001).toFixed(1) + ' m ', center2, center1);
+							if (centerL.lat > centerR.lat) {
+								controlWall = new L.ScalableText(' ' + (distance + 0.0001).toFixed(2) + ' m ', centerR, centerL);
 							} else {
 //reversed
-								controlWall = new L.ScalableText(' ' + (distance + 0.001).toFixed(1) + ' m ', center1, center2);
+								controlWall = new L.ScalableText(' ' + (distance + 0.0001).toFixed(2) + ' m ', centerL, centerR);
 							}
 							controlWall.options.layerType = 'size-text';
 							this.options.drawnWallsLayerGrp.addLayer(controlWall);
@@ -847,41 +864,43 @@ L.Control.RSWEIndoor = L.Control.extend({
 				if (controlWall) { controlWall.on('click', getLeftClickFunc(roomId, wallId), this); }
 
 			}
-
-			roomcenterH = new L.LatLng(roomcenter.lat + 0.01, roomcenter.lng);
-			distance =  roomcenter.distanceTo(roomcenterH);
-			roomcenterH.lat = roomcenter.lat + (roomcenterH.lat - roomcenter.lat) * 2 * (_halfWallWidth / distance);
-			roomcenterH.lng = roomcenter.lng + (roomcenterH.lng - roomcenter.lng) * 2 * (_halfWallWidth / distance);
-
-			roomcenterL = new L.LatLng(roomcenter.lat - (roomcenterH.lat - roomcenter.lat), roomcenter.lng - (roomcenterH.lng - roomcenter.lng));
-
-//			roomcenter.lat = roomcenter.lat - (roomcenterH.lat - roomcenter.lat);
-//			roomcenter.lng = roomcenter.lng - (roomcenterH.lng - roomcenter.lng);
-
-			if (this._map.RSWEIndoor.options.showSquareLabels) {
-				square = Math.abs(square);
-				if (_wallType === 'wall' && layer.isConvex()) {
-					controlWall = new L.ScalableText(' ' + (square + 0.001).toFixed(1) + ' m\u00B2 ', roomcenterL, roomcenterH,
-					{'bgColor': 'transparent', 'attributes': {'fill': 'white'}});
-					controlWall.options.layerType = 'square';
-					this.options.drawnWallsLayerGrp.addLayer(controlWall);
-					roomWalls.push(controlWall);
-				}
-			}
-
 //save structures
 			this.options.roomWallsProps[roomId] = roomWallsProps;
 			this.options.roomProps[roomId] = roomProps;
 
 			this.options.layers[roomId] = {controlLayer: layer, roomWalls: roomWalls};
 
+//calculate square
+			this.calcRoomSquare(roomId);
+
+			roomcenterH = new L.LatLng(roomcenter.lat + 0.01, roomcenter.lng);
+			distance =  roomcenter.distanceTo(roomcenterH);
+
+
+			roomcenterH.lat = roomcenter.lat + (roomcenterH.lat - roomcenter.lat) * 2 * (this.options.wallWidth / distance);
+			roomcenterH.lng = roomcenter.lng + (roomcenterH.lng - roomcenter.lng) * 2 * (this.options.wallWidth / distance);
+
+			roomcenterL = new L.LatLng(roomcenter.lat - (roomcenterH.lat - roomcenter.lat), roomcenter.lng - (roomcenterH.lng - roomcenter.lng));
+
+			if (this._map.RSWEIndoor.options.showSquareLabels) {
+				square = this.options.roomProps[roomId].roomSquare;
+				if (square > this._map.RSWEIndoor.options.dontShowSquaresLessThan) {
+					if (layer.options.layerType === 'wall') {// && layer.isConvex()) {
+						controlWall = new L.ScalableText(' ' + (square + 0.0001).toFixed(1) + ' m\u00B2 ', roomcenterL, roomcenterH,
+						{'bgColor': 'transparent', 'attributes': {'fill': 'white'}});
+						controlWall.options.layerType = 'square';
+						this.options.drawnWallsLayerGrp.addLayer(controlWall);
+						roomWalls.push(controlWall);
+					}
+				}
+			}
 		}
 
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'square') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'rectangle') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'wall') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'size-arrows') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'size-text') { layer.bringToFront(); } });
-		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'square') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'window') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'door') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'control') { layer.bringToFront(); } });
@@ -904,7 +923,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		else if (roomWallsProps[wallId].wallType === 'door3') {roomWallsProps[wallId].wallType = 'door1'; }
 		else { return; }
 
-		this.RedrawRoom(this.options.layers[roomId].controlLayer, 'undefined');
+		this.RedrawRoom(this.options.layers[roomId].controlLayer);//, 'undefined');
 	},
 	SetSnapOptions: function () {
 		this._map.drawControl.setDrawingOptions({
@@ -935,6 +954,46 @@ L.Control.RSWEIndoor = L.Control.extend({
 				snapDistance: 6}
 */
 		});
+	},
+	calcRoomSquare: function (roomId) {
+		if (!this.options.layers[roomId].controlLayer) { return; }
+		var layer = this.options.layers[roomId].controlLayer;
+
+		var layerClass;
+		if (layer instanceof L.Polygon) { layerClass = 'polygon'; }
+		else if (layer instanceof L.Polyline) {	layerClass = 'polyline'; }
+		if (!layerClass) { return; }
+		if (!layer._latlngs) { return; }
+		var latLngs = layer._latlngs;
+
+		if (latLngs.length < 1) { return; }
+		var pointsCount = latLngs.length;
+		if (!this.options.roomWallsProps[roomId]) { return; }
+		var roomWallsProps = this.options.roomWallsProps[roomId];
+		if (!this.options.roomProps[roomId]) { return; }
+		var roomProps = this.options.roomProps[roomId];
+
+
+		var wW0, wW1, wW2;
+		var square = 0;
+		var deltaL = 0;
+		var deltaC = 0;
+		for (var i = 0; i < pointsCount; i++) {
+			wW0 = 0.5 * roomWallsProps[(i + pointsCount - 1) % pointsCount].wallWidth;
+			wW1 = 0.5 * roomWallsProps[(i) % pointsCount].wallWidth;
+			wW2 = 0.5 * roomWallsProps[(i + 1) % pointsCount].wallWidth;
+			if ((i === 0 && layerClass === 'polyline')) { wW0 = 0; }
+			if ((i === pointsCount - 1 && layerClass === 'polyline')) { wW2 = 0; }
+
+			square += 0.5 * (latLngs[(i + 1) % pointsCount].lng * latLngs[(i) % pointsCount].lat -
+				latLngs[(i) % pointsCount].lng * latLngs[(i + 1) % pointsCount].lat) *
+				6378137 * 6378137 * Math.PI * Math.PI / (Math.cos(latLngs[(i) % pointsCount].lat * Math.PI / 180) * 180 * 180);
+			if (!(i === pointsCount - 1 && layerClass === 'polyline')) {
+				deltaL += latLngs[(i + 1) % pointsCount].distanceTo(latLngs[(i) % pointsCount]) * wW1;
+				deltaC += 0.5 * (wW0 * wW1 + wW1 * wW2) / pointsCount;
+			}
+		}
+		roomProps.roomSquare = Math.abs(square) - deltaL + deltaC;
 	},
 //	getJsonData: function () {
 //		var data = this.options.drawnWallsLayerGrp.toGeoJSON();
@@ -1049,28 +1108,25 @@ L.Control.RSWEIndoor = L.Control.extend({
 			 '" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">\r\n';
 
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'square') { outSVG += self.layerToSVG(layer); }
+		});
+		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'rectangle') { outSVG += self.layerToSVG(layer); }
 		});
-
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'wall') { outSVG += self.layerToSVG(layer); }
 		});
-
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'size-arrows') { outSVG += self.layerToSVG(layer); }
 		});
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'size-text') { outSVG += self.layerToSVG(layer); }
 		});
-
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'window') { outSVG += self.layerToSVG(layer); }
 		});
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'door') { outSVG += self.layerToSVG(layer); }
-		});
-		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
-			if (layer.options.layerType === 'square') { outSVG += self.layerToSVG(layer); }
 		});
 
 		outSVG += '</svg>';

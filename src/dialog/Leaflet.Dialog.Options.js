@@ -247,6 +247,32 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 					this._map.fire('redraw:all');
 				}, this);
 			}
+
+			if (this._map.RSWEIndoor.options.dontShowSquaresLessThan !== undefined) {
+				elem = L.DomUtil.create('div', 'dontShowSquaresLessThan-control');
+				tab.appendChild(elem);
+				elem.innerHTML = '<label><input type="text" name="dontShowSquaresLessThan" />' +
+					' Dont Show Squares Less Than (m\u00B2)</label>';
+				elem.firstChild.firstElementChild.setAttribute('value', this._map.RSWEIndoor.options.dontShowSquaresLessThan);
+				L.DomEvent.addListener(elem.firstChild.firstElementChild, 'change', function (evt) {
+					if (evt.target.value) {
+						var val = evt.target.value.replace(new RegExp(',', 'g'), '.');
+						if (!isNaN(val)) {
+							this._map.RSWEIndoor.options.dontShowSquaresLessThan = val;
+							evt.target.value = val;
+							this._map.fire('redraw:all');
+						} else {
+							evt.target.value = this._map.RSWEIndoor.options.dontShowSquaresLessThan;
+						}
+					}
+				}, this);
+			}
+
+
+
+
+
+
 		}
 		tab = this._getTabContainer(1);
 		if (tab) {
