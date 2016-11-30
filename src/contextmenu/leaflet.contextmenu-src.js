@@ -30,8 +30,11 @@
 //
 // just comment next lines to remouve right-click menu
 		contextmenu: true,
-		contextmenuWidth: 140,
-		contextmenuItems: [{text: 'Center map here', callback: function (e) { this.panTo(e.latlng); } }] //this == map context 
+		contextmenuWidth: 150,
+		contextmenuItems: [
+			{text: 'Center map here', callback: function (e) { this.panTo(e.latlng); } },
+			{text: 'Show all squares', callback: function () { this.fire('redraw:showAllSquareLabels'); } }
+		] //this == map context 
 // and decomment this line
 		//contextmenuItems: []
 	});
@@ -78,10 +81,16 @@
 				contextmenu: this._show,
 				mousedown: this._hide,
 				movestart: this._hide,
-				zoomstart: this._hide
+				zoomstart: this._hide,
+				click: this._hide
 			}, this);
 
+			this._map.on({'popups:hide': this._onPopupsHide}, this);
+
 			L.DomEvent.on(this._map.getContainer(), 'mouseleave', this._hide, this);
+		},
+		_onPopupsHide: function (e) {
+			if (e.caller && e.caller !== this) { this._hide(); }
 		},
 
 		removeHooks: function () {
@@ -93,8 +102,12 @@
 				contextmenu: this._show,
 				mousedown: this._hide,
 				movestart: this._hide,
-				zoomstart: this._hide
+				zoomstart: this._hide,
+				click: this._hide
 			}, this);
+
+			this._map.off({'popups:hide': this._onPopupsHide}, this);
+
 			L.DomEvent.off(this._map.getContainer(), 'mouseleave', this._hide, this);
 		},
 
@@ -332,6 +345,7 @@
 		},
 
 		_show: function (e) {
+			this._map.fire('popups:hide', {'caller': this});
 			this._showAtPoint(e.containerPoint);
 		},
 

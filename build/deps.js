@@ -49,7 +49,8 @@ var deps = {
 */
 	ScalableText: {
 		src: [
-			'textpath/leaflet.scalabletext.js'
+			'draw/handler/Scalabletext.js',
+			'edit/handler/Edit.Scalabletext.js'
 		],
 		desc: 'Leaflet.ScalableText plugin adds scalable text objects',
 		deps: ['Core', 'CommonUI']
@@ -69,7 +70,7 @@ var deps = {
 			'draw/handler/Draw.Feature_rswe.js',
 			'draw/handler/Draw.Polyline_rswe.js',
 			'draw/handler/Draw.Polygon_rswe.js',
-			'draw/handler/Draw.SimpleShape.js',
+			'draw/handler/Draw.SimpleShape_rswe.js',
 			'draw/handler/Draw.Rectangle_rswe.js',
 			'draw/handler/Draw.Circle_rswe.js',
 			'draw/handler/Draw.Marker_rswe.js'
@@ -192,7 +193,22 @@ var deps = {
 		deps: ['Core', 'EditHandlers', 'CommonUI']
   
 	},
-
+	Toolbar: {
+                src: [
+                    'toolbar/Toolbar.js',
+                    'toolbar/ToolbarAction.js',
+                    'toolbar/ToolbarActionInput.js',
+                    'toolbar/ToolbarActionLabel.js',
+                    'toolbar/ToolbarPopup.js',
+                    'toolbar/SquareToolbarPopup.js',
+                    'toolbar/WallToolbarPopup.js'
+/*                    'toolbar/Toolbar.Control.js',*/
+//                    'toolbar/EditToolbar.Popup.js',
+//                    'toolbar/ColorPicker.js'
+                ],
+		desc: 'Leaflet.Toolbar provides flexible, extensible toolbar interfaces for Leaflet maps.',
+		deps: ['Core', 'EditHandlers', 'CommonUI']
+	},
 	Dialogs: {
 		src: [
 			'dialog/Leaflet.Dialog.js',

@@ -154,7 +154,7 @@ L.EditToolbar.Delete = L.Handler.extend({
 				if (layer.editing._poly) { llngs =  layer.editing._poly._latlngs; }
 				if (layer.editing._shape) { llngs =  layer.editing._shape._latlngs; }
 
-				if (llngs.length < 2) { return; }
+				if (!llngs || llngs.length < 2) { return; }
 				
 				ll1 = llngs[0];
 

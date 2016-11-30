@@ -11,6 +11,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		roomWallsProps: [],
 		controlLayerGrp: {},
 		drawnWallsLayerGrp: {},
+		labelsLayerGrp: {},
 		fitBondsAfterLoad: true,
 		showSizeArrows: true,
 		dontShowSmallSizeLabels: 0.5,
@@ -40,6 +41,9 @@ L.Control.RSWEIndoor = L.Control.extend({
 			savePNGDialog: function () { return new L.Control.Dialog.SavePNG(); },
 			saveJPGDialog: function () { return new L.Control.Dialog.SaveJPG(); }
 		}
+//		contextMenus: {
+//			squareLabelContextMenu: function () { return new L.Map.ContextMenu(); },
+//		}
 	},
 
 	DeleteRoom: function (layer) {
@@ -47,33 +51,53 @@ L.Control.RSWEIndoor = L.Control.extend({
 		var wall;
 		var roomId, i;
 
+//		var layerId;
+/* jshint ignore:start */
+//		var layerId = layer._leaflet_id;
+/* jshint ignore:end */
+
+//		layer === this.options.layers[roomId].controlLayer;
+
 		for (roomId = 0; roomId < this.options.layers.length; roomId++) {
-			if (layer === this.options.layers[roomId].controlLayer) {
-
-
-				for (i = 0; i < this.options.roomWallsProps[roomId].length; i++) {
-					delete this.options.roomWallsProps[roomId][i];
-				}
-
-				for (i = 0; i < this.options.layers[roomId].roomWalls.length; i++) {
-					wall = this.options.layers[roomId].roomWalls[i];
-/* jshint ignore:start */
-					this.options.drawnWallsLayerGrp.removeLayer(wall._leaflet_id);
-/* jshint ignore:end */
-				}
-/* jshint ignore:start */
-				this.options.controlLayerGrp.removeLayer(layer._leaflet_id);
-/* jshint ignore:end */
-				this.options.layers[roomId].roomWalls.length = 0;
-
-				this.options.layers.splice(roomId, 1);
-
-				this.options.roomProps.splice(roomId, 1);
-				this.options.roomWallsProps.splice(roomId, 1);
-
-				break;
-			}
+			if (layer === this.options.layers[roomId].controlLayer) { break; }
 		}
+
+		for (i = 0; i < this.options.roomWallsProps[roomId].length; i++) {
+			delete this.options.roomWallsProps[roomId][i];
+		}
+
+		for (i = 0; i < this.options.layers[roomId].roomWalls.length; i++) {
+			wall = this.options.layers[roomId].roomWalls[i];
+
+			this.options.drawnWallsLayerGrp.removeLayer(L.stamp(wall));
+/* jshint ignore:start */
+//					this.options.drawnWallsLayerGrp.removeLayer(wall._leaflet_id);
+/* jshint ignore:end */
+		}
+
+		this.options.labelsLayerGrp.eachLayer(function (layerLbl) {
+			if (layerLbl.options.relatedToLayer === layer) {
+				layerLbl._map.RSWEIndoor.options.labelsLayerGrp.removeLayer(L.stamp(layerLbl));
+/* jshint ignore:start */
+/* jshint ignore:end */
+			}
+		});
+
+
+		this.options.controlLayerGrp.removeLayer(L.stamp(layer));
+/* jshint ignore:start */
+//				this.options.controlLayerGrp.removeLayer(layer._leaflet_id);
+/* jshint ignore:end */
+		this.options.layers[roomId].roomWalls.length = 0;
+
+		this.options.layers.splice(roomId, 1);
+
+		this.options.roomProps.splice(roomId, 1);
+		this.options.roomWallsProps.splice(roomId, 1);
+
+//		break;
+//			}
+//		}
 		for (var j = 0, n = this.options.snapOptions.snapLayersArray.length; j < n; j++) {
 			if (L.stamp(layer) === L.stamp(this.options.snapOptions.snapLayersArray[j])) {
 				this.options.snapOptions.snapLayersArray.splice(j, 1);
@@ -84,6 +108,9 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 	RedrawRoom: function (layer, layerType) {
 		var layerClass = 'undefined';
+
+		if (layer.options.layerType === 'square') { return; }
+		if (layer.options.layerType === 'roomname') { return; }
 
 		if (layer instanceof L.Rectangle) {
 			layerClass = 'rectangle';
@@ -109,14 +136,23 @@ L.Control.RSWEIndoor = L.Control.extend({
 		
 			this.options.controlLayerGrp.addLayer(layer);
 
-			layer.snapediting = new L.Handler.MarkerSnap(map, layer);
-			layer.snapediting.addGuideLayer(this.options.controlLayerGrp);
-			layer.snapediting.enable();
-
+//			layer.snapediting = new L.Handler.MarkerSnap(map, layer);
+//			layer.snapediting.addGuideLayer(this.options.controlLayerGrp);
+//			layer.snapediting.enable();
 
 			return;
 		}
 
+//		var layerId;
+/* jshint ignore:start */
+//		var layerId = layer._leaflet_id;
+/* jshint ignore:end */
+
+		this.options.labelsLayerGrp.eachLayer(function (layerLbl) {
+			if (layerLbl.options.relatedToLayer === layer) {
+				layerLbl._map.RSWEIndoor.options.labelsLayerGrp.removeLayer(L.stamp(layerLbl));
+			}
+		});
 
 
 //		var _WallWidth = this.options.wallWidth * 0.5;
@@ -166,18 +202,52 @@ L.Control.RSWEIndoor = L.Control.extend({
 			g1, g2, g11, g12, g21, g22,
 			d01, d11, d12, d02, d21, d22,
 			center, centerL, centerR,// heightPointL, heightPointR,
-			roomcenter, roomcenterH, roomcenterL, square;
-//			tmpLatLng;
-
-		var getLeftClickFunc = function (roomId, wallId) { return function () { this.ChangeWallType(roomId, wallId); }; };
-
-		var _dlgWallProps = new L.Control.Dialog.WallProps().addTo(map);
+			roomcenter, square,
+			bindLabelPoint, bindLabelPointH, bindLabelPointL;
+		var label1, label2;
 		var getRightClickFunc = function (roomId, wallId) {
-			return function () {
-				_dlgWallProps.setDlgInputs(roomId, wallId);
-				_dlgWallProps.open();
+			return function (event) {
+				new L.WallToolbarPopup(roomId, wallId, event.latlng).addTo(map, controlWall);
 			};
 		};
+
+
+
+
+/*
+		var editActions = [
+			L.ToolbarAction.extendOptions({toolbarIcon: { html: 'Edit', className: 'leaflet-draw-edit-edit' }}),
+			L.ToolbarAction.extendOptions({toolbarIcon: { html: 'Remove', className: 'leaflet-draw-edit-remove' },
+				callback: function (map) { map.removeLayer(controlWall); } }),
+
+			L.ToolbarActionInput.extendOptions({toolbarIcon: { html: 'Input', className: 'leaflet-draw-edit-edit' },
+				callback: function (map) { map.removeLayer(controlWall); } })
+//				callback: function (map) { map.removeLayer(controlWall); } }),
+
+//			L.Edit.Popup.Edit,
+//			L.Edit.Popup.Delete,
+			L.ToolbarAction.extendOptions({
+				toolbarIcon: {
+					className: 'leaflet-color-picker',
+					html: '<span class="fa fa-eyedropper"></span>'
+				},
+				subToolbar: new L.CustomToolbar({ actions: [
+					L.ColorPicker.extendOptions({ color: '#db1d0f' }),
+					L.ColorPicker.extendOptions({ color: '#025100' }),
+					L.ColorPicker.extendOptions({ color: '#ffff00' }),
+					L.ColorPicker.extendOptions({ color: '#0000ff' })
+				]})
+			})
+
+		];
+*/
+		var getRightClickFunc1 = function (roomId) {//roomId, wallId) {
+			return function (event) {
+				new L.SquareToolbarPopup(roomId, event.latlng).addTo(map, controlWall);
+			};
+		};
+
+
 
 		if (latLngs.length > 1) {
 //bugfix: correcting situation in case zero distance between verticies delete merged verticies
@@ -496,31 +566,31 @@ L.Control.RSWEIndoor = L.Control.extend({
 						distance =  ar2.distanceTo(ar1);
 						if (distance > _dontShowSmallSizeLabels) {
 //arrow body
-							controlWall = new L.Polyline([ar1, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
-							controlWall.options.layerType = 'size-arrows';//'control';
-							this.options.drawnWallsLayerGrp.addLayer(controlWall);
-							roomWalls.push(controlWall);
+							wall = new L.Polyline([ar1, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							wall.options.layerType = 'size-arrows';//'control';
+							this.options.drawnWallsLayerGrp.addLayer(wall);
+							roomWalls.push(wall);
 //draw sizes
 //arrow ends
-							controlWall = new L.Polygon([ar1L, ar1R, ar1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
-							controlWall.options.layerType = 'size-arrows';//'control';
-							this.options.drawnWallsLayerGrp.addLayer(controlWall);
-							roomWalls.push(controlWall);
+							wall = new L.Polygon([ar1L, ar1R, ar1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							wall.options.layerType = 'size-arrows';//'control';
+							this.options.drawnWallsLayerGrp.addLayer(wall);
+							roomWalls.push(wall);
 
-							controlWall = new L.Polygon([ar2L, ar2R, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
-							controlWall.options.layerType = 'size-arrows';//'control';
-							this.options.drawnWallsLayerGrp.addLayer(controlWall);
-							roomWalls.push(controlWall);
+							wall = new L.Polygon([ar2L, ar2R, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							wall.options.layerType = 'size-arrows';//'control';
+							this.options.drawnWallsLayerGrp.addLayer(wall);
+							roomWalls.push(wall);
 //lenght scalabletext
 							if (centerL.lat > centerR.lat) {
-								controlWall = new L.ScalableText(' ' + (distance + 0.0001).toFixed(2) + ' m ', centerR, centerL);
+								wall = new L.ScalableText(' ' + (distance + 0.0001).toFixed(2) + ' m ', centerR, centerL).addTo(map);
 							} else {
 //reversed
-								controlWall = new L.ScalableText(' ' + (distance + 0.0001).toFixed(2) + ' m ', centerL, centerR);
+								wall = new L.ScalableText(' ' + (distance + 0.0001).toFixed(2) + ' m ', centerL, centerR).addTo(map);
 							}
-							controlWall.options.layerType = 'size-text';
-							this.options.drawnWallsLayerGrp.addLayer(controlWall);
-							roomWalls.push(controlWall);
+							wall.options.layerType = 'size-text';
+							this.options.drawnWallsLayerGrp.addLayer(wall);
+							roomWalls.push(wall);
 						}
 					}
 
@@ -857,44 +927,125 @@ L.Control.RSWEIndoor = L.Control.extend({
 					roomWalls.push(wall);
 
 				}
-
-				this.options.controlLayerGrp.bringToBack();
-
 				if (controlWall) { controlWall.on('contextmenu', getRightClickFunc(roomId, wallId), this); }
-				if (controlWall) { controlWall.on('click', getLeftClickFunc(roomId, wallId), this); }
-
 			}
+
 //save structures
 			this.options.roomWallsProps[roomId] = roomWallsProps;
 			this.options.roomProps[roomId] = roomProps;
 
 			this.options.layers[roomId] = {controlLayer: layer, roomWalls: roomWalls};
+//calculate square      
+			if (!this.options.roomProps[roomId].freezeSquare) { this.calcRoomSquare(roomId); }
 
-//calculate square
-			this.calcRoomSquare(roomId);
+//get label bindlabelpoint
+			if (this.options.roomProps[roomId].freezeLabel) {
+				bindLabelPoint = new L.LatLng(
+					parseFloat(this.options.roomProps[roomId].bindLabelPoint.lat),
+					parseFloat(this.options.roomProps[roomId].bindLabelPoint.lng));
+//				bindLabelPoint = L.LatLngUtil.cloneLatLng(this.options.roomProps[roomId].bindLabelPoint);
+			}
+			if (!bindLabelPoint) {
+				bindLabelPoint = L.LatLngUtil.cloneLatLng(roomcenter);
+			}
+//			console.log(bindLabelPoint, roomcenter);
 
-			roomcenterH = new L.LatLng(roomcenter.lat + 0.01, roomcenter.lng);
-			distance =  roomcenter.distanceTo(roomcenterH);
+			bindLabelPointH = new L.LatLng(bindLabelPoint.lat + 0.01, bindLabelPoint.lng);
+			distance =  bindLabelPoint.distanceTo(bindLabelPointH);
+			bindLabelPointH.lat = bindLabelPoint.lat + (bindLabelPointH.lat - bindLabelPoint.lat) * 2 * (this.options.wallWidth / distance);
+			bindLabelPointH.lng = bindLabelPoint.lng + (bindLabelPointH.lng - bindLabelPoint.lng) * 2 * (this.options.wallWidth / distance);
+			bindLabelPointL = new L.LatLng(bindLabelPoint.lat - (bindLabelPointH.lat - bindLabelPoint.lat),
+				bindLabelPoint.lng - (bindLabelPointH.lng - bindLabelPoint.lng));
 
+			if (this.options.roomProps[roomId].roomName) {
+				if (this.options.roomProps[roomId].roomName.length > 0) {
 
-			roomcenterH.lat = roomcenter.lat + (roomcenterH.lat - roomcenter.lat) * 2 * (this.options.wallWidth / distance);
-			roomcenterH.lng = roomcenter.lng + (roomcenterH.lng - roomcenter.lng) * 2 * (this.options.wallWidth / distance);
+					label1 = new L.ScalableText(this.options.roomProps[roomId].roomName,
 
-			roomcenterL = new L.LatLng(roomcenter.lat - (roomcenterH.lat - roomcenter.lat), roomcenter.lng - (roomcenterH.lng - roomcenter.lng));
+						L.LatLngUtil.cloneLatLng(bindLabelPoint), L.LatLngUtil.cloneLatLng(bindLabelPointH),
+						{'bgColor': 'transparent', 'attributes': {'fill': 'white'},
+						editable: true,
+						onDrag: function (marker, deltaLatLng) {
+							this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].freezeLabel = true;
+							this._scalabletext._map.RSWEIndoor.options.labelsLayerGrp.eachLayer(function (layerLbl) {
+								if (layerLbl.options.relatedToLayer === layer) {
+									layerLbl._latlngs[0].lat += parseFloat(deltaLatLng.lat);
+									layerLbl._latlngs[0].lng += parseFloat(deltaLatLng.lng);
+									layerLbl._latlngs[1].lat += parseFloat(deltaLatLng.lat);
+									layerLbl._latlngs[1].lng += parseFloat(deltaLatLng.lng);
+//									for (var i = 0, len = this._markers.length; i < len; i++) {
+//									if (layerLbl !== label1) {
+//									if (layerLbl !== this) {
+
+//										layerLbl._markers[0].lat += parseFloat(deltaLatLng.lat);
+//										layerLbl._markers[0].lng += parseFloat(deltaLatLng.lng);
+//									}
+									layerLbl.redraw();
+								}
+							});
+							this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].freezeLabel = true;
+							this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].bindLabelPoint = L.LatLngUtil.cloneLatLng(marker._latlng);
+						}
+					}).addTo(map);
+
+					label1.options.layerType = 'roomname';
+					label1.options.relatedToLayer = layer;
+
+					this.options.controlLayerGrp.addLayer(label1);
+					this.options.labelsLayerGrp.addLayer(label1);
+					label1.on('contextmenu', getRightClickFunc1(roomId), this);
+				}
+			}
 
 			if (this._map.RSWEIndoor.options.showSquareLabels) {
 				square = this.options.roomProps[roomId].roomSquare;
-				if (square > this._map.RSWEIndoor.options.dontShowSquaresLessThan) {
-					if (layer.options.layerType === 'wall') {// && layer.isConvex()) {
-						controlWall = new L.ScalableText(' ' + (square + 0.0001).toFixed(1) + ' m\u00B2 ', roomcenterL, roomcenterH,
-						{'bgColor': 'transparent', 'attributes': {'fill': 'white'}});
-						controlWall.options.layerType = 'square';
-						this.options.drawnWallsLayerGrp.addLayer(controlWall);
-						roomWalls.push(controlWall);
+				if (layer.options.layerType === 'wall') {// && layer.isConvex()) {
+					if (square > this._map.RSWEIndoor.options.dontShowSquaresLessThan ||
+						this.options.roomProps[roomId].freezeSquare) {
+						if (!this.options.roomProps[roomId].hideSquare) {
+							label2 = new L.ScalableText(' ' + (Number(square) + 0.0001).toFixed(1) + ' m\u00B2 ',
+								L.LatLngUtil.cloneLatLng(bindLabelPointL), L.LatLngUtil.cloneLatLng(bindLabelPoint),
+								{'bgColor': 'transparent', 'attributes': {'fill': 'white'},
+								editable: (!label1 ? true: false),
+								markerOnTop: true,
+								onDrag: function (marker, deltaLatLng) {
+									this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].freezeLabel = true;
+									this._scalabletext._map.RSWEIndoor.options.labelsLayerGrp.eachLayer(function (layerLbl) {
+										if (layerLbl.options.relatedToLayer === layer) {
+											layerLbl._latlngs[0].lat += parseFloat(deltaLatLng.lat);
+											layerLbl._latlngs[0].lng += parseFloat(deltaLatLng.lng);
+											layerLbl._latlngs[1].lat += parseFloat(deltaLatLng.lat);
+											layerLbl._latlngs[1].lng += parseFloat(deltaLatLng.lng);
+
+//											if (layerLbl !== this) {
+//											for (var i = 0, len = this._markers.length; i < len; i++) {
+//												layerLbl._markers[0].lat += parseFloat(deltaLatLng.lat);
+//												layerLbl._markers[0].lng += parseFloat(deltaLatLng.lng);
+//											}
+
+											layerLbl.redraw();
+										}
+									});
+									this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].freezeLabel = true;
+									this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].bindLabelPoint =
+										L.LatLngUtil.cloneLatLng(marker._latlng);
+								}
+							}).addTo(map);
+							label2.options.layerType = 'square';
+							label2.options.relatedToLayer = layer;
+
+							this.options.controlLayerGrp.addLayer(label2);
+							this.options.labelsLayerGrp.addLayer(label2);
+
+							label2.on('contextmenu', getRightClickFunc1(roomId), this);
+						}
+
+
 					}
 				}
 			}
 		}
+		this.options.controlLayerGrp.bringToBack();
 
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'square') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'rectangle') { layer.bringToFront(); } });
@@ -955,6 +1106,13 @@ L.Control.RSWEIndoor = L.Control.extend({
 */
 		});
 	},
+	showAllSquareLabels : function () {
+		for (var roomId = 0, len = this.options.roomProps.length; roomId < len; roomId++) {
+			this.options.roomProps[roomId].hideSquare = false;
+		}
+		this._map.fire('redraw:all');
+	},
+
 	calcRoomSquare: function (roomId) {
 		if (!this.options.layers[roomId].controlLayer) { return; }
 		var layer = this.options.layers[roomId].controlLayer;
@@ -1107,8 +1265,11 @@ L.Control.RSWEIndoor = L.Control.extend({
 			 '" height="' + (latToPixelY(bnds.getSouth()) + 1) +
 			 '" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">\r\n';
 
-		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+		this.options.labelsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'square') { outSVG += self.layerToSVG(layer); }
+		});
+		this.options.labelsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'roomname') { outSVG += self.layerToSVG(layer); }
 		});
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'rectangle') { outSVG += self.layerToSVG(layer); }
@@ -1220,33 +1381,57 @@ L.Control.RSWEIndoor = L.Control.extend({
 			return outLayer;
 		}
 		if (layer instanceof L.ScalableText) {
-			var fontSize = layer._textNode.getAttribute('font-size').replace('px', '');
+			var fontSize = layer._textNode.getAttribute('font-size').replace('px', ''); //fontsize = 10
+			var scale = 1.0;//fontSize / 10;
+			var transform = '';
+
 			var textWidth = layer._textNode.getComputedTextLength();
 
-			var coslat1 = Math.cos(layer.bindPoint.lat * Math.PI / 180);
+			var coslat1 = Math.cos(layer._latlngs[0].lat * Math.PI / 180);
 
-			var rotateAngle1 = Math.atan2(-layer.bindPoint.lat + layer.heightPoint.lat,
-				(layer.bindPoint.lng - layer.heightPoint.lng) * coslat1) * 180 / Math.PI - 90;
+			var rotateAngle1 = Math.atan2(-layer._latlngs[0].lat + layer._latlngs[1].lat,
+				(layer._latlngs[0].lng - layer._latlngs[1].lng) * coslat1) * 180 / Math.PI - 90;
 
-			var transform = 'translate('  + lngToPixelX(layer.bindPoint.lng)  + '.5' +
-			' ' + latToPixelY(layer.bindPoint.lat) + '.5' + ')' +
-//				' scale(' + scaleH + ') '
-			' rotate(' + rotateAngle1 + ')';
 
 			if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
 
 			if (layer.options.layerType === 'size-text') {
+				scale = scale * 1.0;//(font-size / 10)
+				transform = 'translate('  + lngToPixelX(layer._latlngs[0].lng)  + '.5' +
+					' ' + latToPixelY(layer._latlngs[0].lat) + '.5' + ')' +
+					' scale(' + scale.toFixed(3) + ') ' +
+					' rotate(' + rotateAngle1 + ')';
+				if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
 				outLayer = '<g><g transform="' + transform + '">' +
 					'<rect x="-2" y="-10" height="10" fill="black" width="' + textWidth * 12 / fontSize  + '"/>' +
 					'<text fill="white" text-anchor="start" y="-1" font-size="12px" font-family="Arial">' +
 					layer._text + '</text></g></g>\r\n';
 			}
-			if (layer.options.layerType === 'square') {
+			if (layer.options.layerType === 'roomname') {
+				scale = scale * 16 / 10;//(font-size / 10)
+				transform = 'translate('  + lngToPixelX(layer._latlngs[0].lng)  + '.5' +
+					' ' + latToPixelY(layer._latlngs[0].lat) + '.5' + ')' +
+					' scale(' + scale.toFixed(3) + ') ' +
+					' rotate(' + rotateAngle1 + ')';
+				if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
 				outLayer = '<g><g transform="' + transform + '">' +
-//					'<rect x="-4" y="-20" height="20" fill="transparent" width="' + textWidth * 24 / fontSize  + '"/>' +
-					'<text fill="#dddddd" text-anchor="start" y="-2" font-size="24px" font-family="Arial">' +
+//					'<rect x="-4" y="-20" height="20" fill="transparent" width="' + textWidth * 20 / fontSize  + '"/>' +
+					'<text fill="#dddddd" text-anchor="start" y="-5" font-size="18px" font-family="Arial">' +
 					layer._text + '</text></g></g>\r\n';
 			}
+			if (layer.options.layerType === 'square') {
+				scale = scale * 16 / 10;//(font-size / 10)
+				transform = 'translate('  + lngToPixelX(layer._latlngs[0].lng)  + '.5' +
+					' ' + latToPixelY(layer._latlngs[0].lat) + '.5' + ')' +
+					' scale(' + scale.toFixed(3) + ') ' +
+					' rotate(' + rotateAngle1 + ')';
+				if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
+				outLayer = '<g><g transform="' + transform + '">' +
+//					'<rect x="-4" y="-20" height="20" fill="transparent" width="' + textWidth * 20 / fontSize  + '"/>' +
+					'<text fill="#dddddd" text-anchor="start" y="-1" font-size="18px" font-family="Arial">' +
+					layer._text + '</text></g></g>\r\n';
+			}
+
 			return outLayer;
 		}
 		return outLayer;
@@ -1257,10 +1442,13 @@ L.Control.RSWEIndoor = L.Control.extend({
 			roomWallsProps: this.options.roomWallsProps
 		};
 		return JSON.stringify(data);
+//		return L.Util.base64Utf8Encode(JSON.stringify(data));
+
 	},
 
 	loadData: function (data) {
 //if data == empty clear drawing
+//		data = L.Util.base64Utf8Decode(data);
 		if (!data) { data = '{"roomProps":[],"roomWallsProps":[]}'; }
 		var dataObj;
 		try {
@@ -1275,6 +1463,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		this.options.drawnWallsLayerGrp.clearLayers();
 		this.options.controlLayerGrp.clearLayers();
+		this.options.labelsLayerGrp.clearLayers();
 //create data from loaded structures
 		this.options.roomProps = dataObj.roomProps;
 		this.options.roomWallsProps = dataObj.roomWallsProps;
@@ -1288,7 +1477,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 			if (layer) {
 
 				layer.addTo(this._map);
-				layer.setStyle({opacity: 0});
+				if (layer.setStyle) { layer.setStyle({opacity: 0}); }
 				this.options.controlLayerGrp.addLayer(layer);
 //reinitialize layers as if they were created via drawing toolbar
 				this.RedrawRoom(layer);
@@ -1326,6 +1515,9 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.RSWEIndoor.options.drawnWallsLayerGrp = new L.FeatureGroup();
 		map.addLayer(map.RSWEIndoor.options.drawnWallsLayerGrp);
+
+		map.RSWEIndoor.options.labelsLayerGrp = new L.FeatureGroup();
+		map.addLayer(map.RSWEIndoor.options.labelsLayerGrp);
 
 		map.options.snapGrid.options.interval =  map.RSWEIndoor.options.snapOptions.gridStep;
 		if (map.RSWEIndoor.options.snapOptions.displaySnapGrid) { map.options.snapGrid.show(); }
@@ -1398,7 +1590,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.on('draw:editstart_after', function () {
 			map.RSWEIndoor.options.controlLayerGrp.eachLayer(function (layer) {
-				layer.setStyle({opacity: 0.6});
+				if (layer.setStyle) { layer.setStyle({opacity: 0.6}); }
+				
 
 				if (layer.editing._poly !== undefined) {
 					if (layer.snapediting === undefined) {
@@ -1428,7 +1621,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.on('draw:editstop', function () {
 			map.RSWEIndoor.options.controlLayerGrp.eachLayer(function (layer) {
-				layer.setStyle({opacity: 0});
+				if (layer.setStyle) { layer.setStyle({opacity: 0}); }
 
 				if (layer.editing._poly !== undefined) {
 					if (layer.snapediting !== undefined) {
@@ -1461,14 +1654,20 @@ L.Control.RSWEIndoor = L.Control.extend({
 		});
 
 		map.on('draw:created', function (e) {
-			e.layer.setStyle({opacity: 0});
+			if (e.layer.setStyle) { e.layer.setStyle({opacity: 0}); }
 			map.RSWEIndoor.RedrawRoom(e.layer, e.layerType);
 		});
 
 		map.on('redraw:all', function () {
+			map.RSWEIndoor.options.labelsLayerGrp.clearLayers();
+
 			map.RSWEIndoor.options.controlLayerGrp.eachLayer(function (layer) {
 				map.RSWEIndoor.RedrawRoom(layer);
 			});
+		});
+
+		map.on('redraw:showAllSquareLabels', function () {
+			map.RSWEIndoor.showAllSquareLabels();
 		});
 
 	}

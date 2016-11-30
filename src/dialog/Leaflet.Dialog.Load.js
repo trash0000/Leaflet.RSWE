@@ -143,7 +143,7 @@ L.Control.Dialog.Load = L.Control.Dialog.extend({
 
 				evt.target.thisDlg.InputName.value = '';
 
-				var isOK = evt.target.thisDlg._map.RSWEIndoor.loadData(evt.target.result);
+				var isOK = evt.target.thisDlg._map.RSWEIndoor.loadData(L.Util.base64Utf8Decode(evt.target.result));
 				if (isOK) {
 					evt.target.thisDlg.close();
 				} else {

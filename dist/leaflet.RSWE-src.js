@@ -545,132 +545,121 @@ L.curve = function (path, options) {
  * http://mapbox.com/osmdev/2012/11/20/getting-serious-about-svg/
  */
 
-(function () {
-        L.ScalableText = L.Path.extend({
-            initialize: function (text, bindPoint, heightPoint, options) {
-                var attrCopy;
-                if (options && options.attributes) { attrCopy = {}; L.Util.extend(attrCopy, options.attributes); delete options.attributes; }
+L.ScalableText = L.Path.extend({
+	includes: L.Mixin.Events,
+
+	initialize: function (text, bindPoint, heightPoint, options) {
+		var attrCopy;
+		if (options && options.attributes) { attrCopy = {}; L.Util.extend(attrCopy, options.attributes); delete options.attributes; }
 
 //                if (options) {
 //                    options.attributes = {};
 //                    L.Util.extend(options.attributes, this.option.attributes);
 //                }
 
-                this.options = {};
-                L.Util.extend(this.options, this.defaultOptions);
-                if (options) { L.Util.extend(this.options, options); }
+		this.options = {};
+		L.Util.extend(this.options, this.defaultOptions);
+		if (options) { L.Util.extend(this.options, options); }
 
-                this.options.attributes = {};
-                L.Util.extend(this.options.attributes, this.defaultAttributes);
+		this.options.attributes = {};
+		L.Util.extend(this.options.attributes, this.defaultAttributes);
 
-                if (attrCopy !== undefined) {
-                    L.Util.extend(this.options.attributes, attrCopy);
-                    options.attributes = {};
-                    L.Util.extend(options.attributes, attrCopy);
-                }
+		if (attrCopy !== undefined) {
+			L.Util.extend(this.options.attributes, attrCopy);
+			options.attributes = {};
+			L.Util.extend(options.attributes, attrCopy);
+		}
 
-                L.Path.prototype.initialize.call(this, this.options);
-                this._latlngs = this._convertLatLngs([bindPoint, heightPoint]);
-                this._text = text;
-                this.bindPoint = this._latlngs[0];
-                this.heightPoint = this._latlngs[1];
-            },
-            defaultAttributes: {
-                'fill': 'white',
-                'text-anchor': 'start',
-                'line-height': '15px',
-                'font-size': '12px',
-                'font-family': 'Arial'
-            },
-            defaultOptions: {
-                bgColor: 'black',
-                orientation: 'normal',
-                center: true,
-                below: false
-            },
-            options: {},
+		L.Path.prototype.initialize.call(this, this.options);
+		this._latlngs = this._convertLatLngs([bindPoint, heightPoint]);
+		this._text = text;
+	},
+	defaultAttributes: {
+		'fill': 'white',
+		'text-anchor': 'start',
+		'line-height': '15px',
+		'font-size': '12px',
+		'font-family': 'Arial'
+	},
+	defaultOptions: {
+		editable: false,
+		clickable: true,
+		bgColor: 'black',
+		orientation: 'normal',
+		center: true,
+		below: false
+	},
+	options: {
+	},
 
-            onAdd: function (map) {
-                L.Path.prototype.onAdd.call(this, map);
-                this._textRedraw();
-            },
-
-            onRemove: function (map) {
-                map = map || this._map;
-                if (map && this._gNode && this._textNode && this._rectNode) {
-                    this._gNode.removeChild(this._textNode);
-                    this._gNode.removeChild(this._rectNode);
-                    delete this._textNode;
-                    delete this._rectNode;
-
-                }
-                if (map && this._container) {
-                    this._container.removeChild(this._gNode);
-                    delete this._gNode;
-                }
-                L.Path.prototype.onRemove.call(this, map);
-            },
-
-            bringToFront: function () {
-                L.Path.prototype.bringToFront.call(this, map);
-                this._textRedraw();
-            },
-            bringToBack: function () {
-                L.Path.prototype.bringToBack.call(this, map);
-                this._textRedraw();
-            },
-
-            _updatePath: function () {
-                if (!this._map) { return; }
-                L.Path.prototype._updatePath.call(this);
-                this._textRedraw();
-            },
-
-            redraw: function () {
-                if (!this._map) { return; }
-                L.Path.prototype.redraw.call(this);
-                this._textRedraw();
-            },
-
-            _textRedraw: function () {
-                var text = this._text;
-
-//                var options = this.options;
-//                if (text) { this.setText(text, options); }
-                if (text) { this.setText(text); }
-            },
-
-            projectLatlngs: function () {
-                this._originalPoints = [];
-
-                for (var i = 0, len = this._latlngs.length; i < len; i++) {
-                    this._originalPoints[i] = this._map.latLngToLayerPoint(this._latlngs[i]);
-                }
-            },
-
-            getLatLngs: function () {
-                return this._latlngs;
-            },
-
-            getBounds: function () {
-                return new L.LatLngBounds(this.getLatLngs());
-            },
-
-            _convertLatLngs: function (latlngs, overwrite) {
-                var i, len, target = overwrite ? latlngs : [];
-  
-                for (i = 0, len = latlngs.length; i < len; i++) {
-                    if (L.Util.isArray(latlngs[i]) && typeof latlngs[i][0] !== 'number') { return; }
-                    target[i] = L.latLng(latlngs[i]);
-                }
-                return target;
-            },
-
-            _initEvents: function () {
-                L.Path.prototype._initEvents.call(this);
-            },
-            setText: function (text) {//, options) {
-                this._text = text;
+	onAdd: function (map) {
+		L.Path.prototype.onAdd.call(this, map);
+		this._map = map;
+		this._textRedraw();
+	},
+	onRemove: function (map) {
+		map = map || this._map;
+		if (map && this._gNode && this._textNode && this._rectNode) {
+			this._gNode.removeChild(this._textNode);
+			this._gNode.removeChild(this._rectNode);
+			delete this._textNode;
+			delete this._rectNode;
+		}
+		if (map && this._container) {
+			this._container.removeChild(this._gNode);
+			delete this._gNode;
+		}
+		L.Path.prototype.onRemove.call(this, map);
+	},
+	bringToFront: function () {
+		if (!this._map) { return; }
+		L.Path.prototype.bringToFront.call(this, this._map);
+		this._textRedraw();
+	},
+	bringToBack: function () {
+		if (!this._map) { return; }
+		L.Path.prototype.bringToBack.call(this, this._map);
+		this._textRedraw();
+	},
+	_updatePath: function () {
+		if (!this._map) { return; }
+		L.Path.prototype._updatePath.call(this);
+		this._textRedraw();
+	},
+	redraw: function () {
+		if (!this._map) { return; }
+		L.Path.prototype.redraw.call(this);
+		this._textRedraw();
+	},
+	_textRedraw: function () {
+		var text = this._text;
+		if (text) { this.setText(text); }
+	},
+	projectLatlngs: function () {
+		this._originalPoints = [];
+		for (var i = 0, len = this._latlngs.length; i < len; i++) {
+			this._originalPoints[i] = this._map.latLngToLayerPoint(this._latlngs[i]);
+		}
+	},
+	getLatLngs: function () {
+		return this._latlngs;
+	},
+	getBounds: function () {
+		return new L.LatLngBounds(this.getLatLngs());
+	},
+	_convertLatLngs: function (latlngs, overwrite) {
+		var i, len, target = overwrite ? latlngs : [];
+		for (i = 0, len = latlngs.length; i < len; i++) {
+			if (L.Util.isArray(latlngs[i]) && typeof latlngs[i][0] !== 'number') { return; }
+			target[i] = L.latLng(latlngs[i]);
+		}
+		return target;
+	},
+	_initEvents: function () {
+		L.Path.prototype._initEvents.call(this);
+	},
+	setText: function (text) {//, options) {
+		this._text = text;
 //                if (options) { this.options = L.Util.extend(this.defaultOptions, options); }
 
 //                this.options.attributes = L.Util.extend(this.options.attributes, this.defaultOptions.attributes);
@@ -683,69 +672,67 @@ L.curve = function (path, options) {
 //                this.options = L.Util.extend(this.options, options);
 /* If not in SVG mode or Polyline not added to map yet return */
 /* setText will be called by onAdd, using value stored in this._text */
-                if (!L.Browser.svg || typeof this._map === 'undefined') { return this; }
+		if (!L.Browser.svg || typeof this._map === 'undefined') { return this; }
 /* If empty text, hide */
-                if (!this._text) {
-                    if (this._map && this._container && this._gNode && this._textNode && this.rectNode) {
-                        this._gNode.removeChild(this._textNode);
-                        this._gNode.removeChild(this._rectNode);
-                        delete this._textNode;
-                        delete this._rectNode;
-                    }
-                    if (this._container && this._gNode) {
-                        this._container.removeChild(this._gNode);
-                        delete this._gNode;
-                    }
-                    return this;
-                }
+		if (!this._text) {
+			if (this._map && this._container && this._gNode && this._textNode && this.rectNode) {
+				this._gNode.removeChild(this._textNode);
+				this._gNode.removeChild(this._rectNode);
+				delete this._textNode;
+				delete this._rectNode;
+			}
+			if (this._container && this._gNode) {
+				this._container.removeChild(this._gNode);
+				delete this._gNode;
+			}
+			return this;
+		}
+		if (!this._gNode) {
+			this._gNode = L.Path.prototype._createElement('g');
+			if (!this._rectNode) {
+				this._rectNode = L.Path.prototype._createElement('rect');
+				this._gNode.appendChild(this._rectNode);
+			}
+			if (!this._textNode) {
+				this._textNode = L.Path.prototype._createElement('text');
+				this._gNode.appendChild(this._textNode);
+			}
+			this._container.appendChild(this._gNode);
+			if ((L.Browser.svg || !L.Browser.vml) && this.options.clickable) { this._gNode.setAttribute('class', 'leaflet-clickable'); }
+		}
+		for (var attr in this.options.attributes) { this._textNode.setAttribute(attr, this.options.attributes[attr]); }
+		this._textNode.innerHTML = this._text.replace(/ /g, '\u00A0');
+		if (this._latlngs[1] && this._latlngs[0]) {
+			var lineHeight = parseInt(this.options.attributes['line-height'].replace('px', ''), 10);
+			var fontSize = parseInt(this.options.attributes['font-size'].replace('px', ''), 10);
+			var point = this._map.latLngToLayerPoint(this._latlngs[0]);
+			var scaleH = point.distanceTo(this._map.latLngToLayerPoint(this._latlngs[1])) / lineHeight;
 
-                if (!this._gNode) {
-                    this._gNode = L.Path.prototype._createElement('g');
+			var coslat1 = Math.cos(this._latlngs[0].lat * Math.PI / 180);
 
-                    if (!this._rectNode) {
-                        this._rectNode = L.Path.prototype._createElement('rect');
-                        this._gNode.appendChild(this._rectNode);
-                    }
-                    if (!this._textNode) {
-                        this._textNode = L.Path.prototype._createElement('text');
-                        this._gNode.appendChild(this._textNode);
-                    }
-                    this._container.appendChild(this._gNode);
-                }
-
-                for (var attr in this.options.attributes) { this._textNode.setAttribute(attr, this.options.attributes[attr]); }
-                this._textNode.innerHTML = this._text.replace(/ /g, '\u00A0');
-                if (this.heightPoint && this.bindPoint) {
-                    var lineHeight = parseInt(this.options.attributes['line-height'].replace('px', ''), 10);
-                    var fontSize = parseInt(this.options.attributes['font-size'].replace('px', ''), 10);
-
-                    var point = this._map.latLngToLayerPoint(this.bindPoint);
-                    var scaleH = point.distanceTo(this._map.latLngToLayerPoint(this.heightPoint)) / lineHeight;
-
-                    var coslat1 = Math.cos(this.bindPoint.lat * Math.PI / 180);
-
-                    var rotateAngle1 = Math.atan2(-this.bindPoint.lat + this.heightPoint.lat,
-			(this.bindPoint.lng - this.heightPoint.lng) * coslat1
-			) * 180 / Math.PI - 90;
-                    var transform = 'translate('  + point.x  + ' ' + point.y + ')' +
-                        ' scale(' + scaleH + ') rotate(' + rotateAngle1 + ')';
-
-                    if (this.options.center) {transform = transform + ' translate('  + (-0.5 * this._textNode.getComputedTextLength()) + ')'; }
+			var rotateAngle1 = Math.atan2(-this._latlngs[0].lat + this._latlngs[1].lat,
+				(this._latlngs[0].lng - this._latlngs[1].lng) * coslat1) * 180 / Math.PI - 90;
+			var transform = 'translate('  + point.x  + ' ' + point.y + ')' +
+				' scale(' + scaleH + ') rotate(' + rotateAngle1 + ')';
+			if (this.options.center) {transform = transform + ' translate('  + (-0.5 * this._textNode.getComputedTextLength()) + ')'; }
 	
-                    this._textNode.setAttribute('x', '0');
-                    this._textNode.setAttribute('y', '-' + 0.8 * (lineHeight - fontSize));
+			this._textNode.setAttribute('x', '0');
+			this._textNode.setAttribute('y', '-' + 0.8 * (lineHeight - fontSize));
 
-                    this._rectNode.setAttribute('x', '0');
-                    this._rectNode.setAttribute('y', '-' + lineHeight);
-                    this._rectNode.setAttribute('height', '' + lineHeight);
-                    this._rectNode.setAttribute('width', this._textNode.getComputedTextLength());
-                    this._rectNode.setAttribute('fill', this.options.bgColor);
+			this._rectNode.setAttribute('x', '0');
+			this._rectNode.setAttribute('y', '-' + lineHeight);
+			this._rectNode.setAttribute('height', '' + lineHeight);
+			this._rectNode.setAttribute('width', this._textNode.getComputedTextLength());
+			this._rectNode.setAttribute('fill', this.options.bgColor);
+			this._rectNode.setAttribute('transform', transform);
+			this._textNode.setAttribute('transform', transform);
 
-                    this._rectNode.setAttribute('transform', transform);
-                    this._textNode.setAttribute('transform', transform);
+//                    if ((L.Browser.svg || !L.Browser.vml) && this.options.clickable) { this._gNode.setAttribute('class', 'leaflet-clickable'); }
 
-                    point = null;
-                }
+//                    L.DomUtil._setClass(this._rectNode, (className ? className + ' ' : '') + name);
+
+			point = null;
+		}
 /* Initialize mouse events for the additional nodes */
 /*                if (this.options.clickable) {
                     if (L.Browser.svg || !L.Browser.vml) { this.textNode.setAttribute('class', 'leaflet-clickable'); }
@@ -754,14 +741,172 @@ L.curve = function (path, options) {
                     for (var i = 0; i < events.length; i++) { L.DomEvent.on(textNode, events[i], this._fireMouseEvent, this); }
                 }
 */
-                return this;
-            }
-        });
+		return this;
+	}
+});
+/*
+L.scalabletext = function (text, latlngs, options) {
+	return new L.ScalableText(text, latlngs, options);
+};
+*/
 
-        L.scalabletext = function (text, latlngs, options) {
-            return new L.ScalableText(text, latlngs, options);
-        };
-    })();
+L.Edit = L.Edit || {};
+
+L.Edit.ScalableText = L.Handler.extend({
+	options: {
+		icon: new L.DivIcon({
+			iconSize: new L.Point(16, 16),
+			className: 'leaflet-div-icon leaflet-editing-icon'
+		})
+	},
+
+	initialize: function (scalabletext, options) {
+		this._scalabletext = scalabletext;
+		L.setOptions(this, options);
+	},
+
+	addHooks: function () {
+		var scalabletext = this._scalabletext;
+
+		scalabletext.setStyle(scalabletext.options.editing);
+
+		if (this._scalabletext.options.editable && this._scalabletext._map) {
+			if (!this._markerGroup) {
+				this._initMarkers();
+			}
+			this._scalabletext._map.addLayer(this._markerGroup);
+		}
+	},
+
+	removeHooks: function () {
+		var scalabletext = this._scalabletext;
+
+		scalabletext.setStyle(scalabletext.options.original);
+
+		if (this._scalabletext.options.editable && this._scalabletext._map) {
+			scalabletext._map.removeLayer(this._markerGroup);
+			delete this._markerGroup;
+			delete this._markers;
+		}
+	},
+
+	updateMarkers: function () {
+		this._markerGroup.clearLayers();
+		this._initMarkers();
+	},
+
+	_initMarkers: function () {
+		if (!this._markerGroup) {
+			this._markerGroup = new L.LayerGroup();
+		}
+		this._markers = [];
+
+		var latlngs = this._scalabletext._latlngs, marker;//i, len, j
+
+
+		if (!this._scalabletext.options.markerOnTop) {
+			marker = this._createMarker(latlngs[0], 0);
+			this._markers.push(marker);
+		} else {
+			marker = this._createMarker(latlngs[1], 1);
+			this._markers.push(marker);
+		}
+	},
+	_createMarker: function (latlng, index) {
+		var marker = new L.Marker(latlng, {
+			draggable: true,
+			icon: this.options.icon
+		});
+
+		marker._origLatLng = latlng;
+		marker._index = index;
+
+		marker.on('drag', this._onMarkerDrag, this);
+		marker.on('dragend', this._fireEdit, this);
+
+		this._markerGroup.addLayer(marker);
+
+		return marker;
+	},
+
+	_removeMarker: function (marker) {
+		var i = marker._index;
+
+		this._markerGroup.removeLayer(marker);
+		this._markers.splice(i, 1);
+		this._scalabletext.spliceLatLngs(i, 1);
+		this._updateIndexes(i, -1);
+
+		marker
+			.off('drag', this._onMarkerDrag, this)
+			.off('dragend', this._fireEdit, this)
+			.off('click', this._onMarkerClick, this);
+	},
+
+	_fireEdit: function () {
+		this._scalabletext.edited = true;
+		this._scalabletext.fire('edit');
+		this._scalabletext._map.fire('edit', { layer: this._scalabletext});
+	},
+
+	_onMarkerDrag: function (e) {
+		var marker = e.target;
+
+		L.DomEvent.preventDefault(e);
+		var delta = {'lat': (marker._latlng.lat - marker._origLatLng.lat), 'lng': (marker._latlng.lng - marker._origLatLng.lng)};
+		if (this._scalabletext.options.editable && this._scalabletext.options.onDrag) { this._scalabletext.options.onDrag.call(this, marker, delta); }
+
+		if (!this._scalabletext.options.markerOnTop) {
+			this._scalabletext._latlngs[1].lat += marker._latlng.lat - marker._origLatLng.lat;
+			this._scalabletext._latlngs[1].lng += marker._latlng.lng - marker._origLatLng.lng;
+		} else {
+			this._scalabletext._latlngs[0].lat += marker._latlng.lat - marker._origLatLng.lat;
+			this._scalabletext._latlngs[0].lng += marker._latlng.lng - marker._origLatLng.lng;
+		}
+
+		L.extend(marker._origLatLng, marker._latlng);
+
+
+		this._scalabletext.redraw();
+	},
+
+	_updateIndexes: function (index, delta) {
+		this._markerGroup.eachLayer(function (marker) {
+			if (marker._index > index) {
+				marker._index += delta;
+			}
+		});
+	}
+});
+
+L.ScalableText.addInitHook(function () {
+
+	// Check to see if handler has already been initialized. This is to support versions of Leaflet that still have L.Handler.PolyEdit
+	if (this.editing) {
+		return;
+	}
+
+	if (L.Edit.ScalableText) {
+		this.editing = new L.Edit.ScalableText(this);
+
+//		if (this.options.editable) {
+//			this.editing.enable();
+//		}
+	}
+
+	this.on('add', function () {
+		if (this.editing && this.editing.enabled() && this.options.editable) {
+			this.editing.addHooks();
+		}
+	});
+
+	this.on('remove', function () {
+		if (this.editing && this.editing.enabled() && this.options.editable) {
+			this.editing.removeHooks();
+		}
+	});
+});
+
 
 /*
  * Leaflet.draw assumes that you have already included the Leaflet library.
@@ -1754,6 +1899,19 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 	},
 
 	_onMouseDown: function (e) {
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.startTouch = e.originalEvent.touches[0];
+			this.lastTouch = e.originalEvent.touches[0];
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
+
 		this._isDrawing = true;
 
 		var map = this._map, containerPoint;
@@ -1789,6 +1947,18 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 	},
 
 	_onMouseMove: function (e) {
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.startTouch = e.originalEvent.touches[0];
+			this.lastTouch = e.originalEvent.touches[0];
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
 		var map = this._map, containerPoint;
 
 		if (e.touches) {
@@ -1819,7 +1989,19 @@ L.Draw.SimpleShape = L.Draw.Feature.extend({
 */
 	},
 
-	_onMouseUp: function () {
+	_onMouseUp: function (e) {
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.startTouch = e.originalEvent.touches[0];
+			this.lastTouch = e.originalEvent.touches[0];
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
 		if (this._shape) {
 			this._fireCreatedEvent();
 		}
@@ -1945,7 +2127,19 @@ L.Draw.Circle = L.Draw.SimpleShape.extend({
 	},
 
 	_onMouseMove: function (e) {
-		e.preventDefault();
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.startTouch = e.originalEvent.touches[0];
+			this.lastTouch = e.originalEvent.touches[0];
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
+		e.originalEvent.preventDefault();
 
 		var latlng = e.latlng,
 			showRadius = this.options.showRadius,
@@ -2017,6 +2211,20 @@ L.Draw.Marker = L.Draw.Feature.extend({
 			this._map.on('mousemove', this._onMouseMove, this);
 		}
 	},
+	setStyle: function (style) {
+		L.setOptions(this, style);
+
+		if (this._container) {
+			this._updateStyle();
+		}
+
+		return this;
+	},
+
+
+//	setStyle: function (style) {
+//		L.Draw.Feature.prototype.setStyle(this, style);
+//	},
 
 	removeHooks: function () {
 		L.Draw.Feature.prototype.removeHooks.call(this);
@@ -2039,7 +2247,19 @@ L.Draw.Marker = L.Draw.Feature.extend({
 	},
 
 	_onMouseMove: function (e) {
-		e.preventDefault();
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.startTouch = e.originalEvent.touches[0];
+			this.lastTouch = e.originalEvent.touches[0];
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
+		e.originalEvent.preventDefault();
 
 		var latlng = e.latlng;
 
@@ -2063,7 +2283,19 @@ L.Draw.Marker = L.Draw.Feature.extend({
 		}
 	},
 
-	_onClick: function () {
+	_onClick: function (e) {
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.startTouch = e.originalEvent.touches[0];
+			this.lastTouch = e.originalEvent.touches[0];
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
 		this._fireCreatedEvent();
 
 		this.disable();
@@ -4734,7 +4966,7 @@ L.EditToolbar.Delete = L.Handler.extend({
 				if (layer.editing._poly) { llngs =  layer.editing._poly._latlngs; }
 				if (layer.editing._shape) { llngs =  layer.editing._shape._latlngs; }
 
-				if (llngs.length < 2) { return; }
+				if (!llngs || llngs.length < 2) { return; }
 				
 				ll1 = llngs[0];
 
@@ -5928,8 +6160,11 @@ L.Map.addInitHook(function () {
 //
 // just comment next lines to remouve right-click menu
 		contextmenu: true,
-		contextmenuWidth: 140,
-		contextmenuItems: [{text: 'Center map here', callback: function (e) { this.panTo(e.latlng); } }] //this == map context 
+		contextmenuWidth: 150,
+		contextmenuItems: [
+			{text: 'Center map here', callback: function (e) { this.panTo(e.latlng); } },
+			{text: 'Show all squares', callback: function () { this.fire('redraw:showAllSquareLabels'); } }
+		] //this == map context 
 // and decomment this line
 		//contextmenuItems: []
 	});
@@ -5976,10 +6211,16 @@ L.Map.addInitHook(function () {
 				contextmenu: this._show,
 				mousedown: this._hide,
 				movestart: this._hide,
-				zoomstart: this._hide
+				zoomstart: this._hide,
+				click: this._hide
 			}, this);
 
+			this._map.on({'popups:hide': this._onPopupsHide}, this);
+
 			L.DomEvent.on(this._map.getContainer(), 'mouseleave', this._hide, this);
+		},
+		_onPopupsHide: function (e) {
+			if (e.caller && e.caller !== this) { this._hide(); }
 		},
 
 		removeHooks: function () {
@@ -5991,8 +6232,12 @@ L.Map.addInitHook(function () {
 				contextmenu: this._show,
 				mousedown: this._hide,
 				movestart: this._hide,
-				zoomstart: this._hide
+				zoomstart: this._hide,
+				click: this._hide
 			}, this);
+
+			this._map.off({'popups:hide': this._onPopupsHide}, this);
+
 			L.DomEvent.off(this._map.getContainer(), 'mouseleave', this._hide, this);
 		},
 
@@ -6230,6 +6475,7 @@ L.Map.addInitHook(function () {
 		},
 
 		_show: function (e) {
+			this._map.fire('popups:hide', {'caller': this});
 			this._showAtPoint(e.containerPoint);
 		},
 
@@ -6666,6 +6912,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 		roomWallsProps: [],
 		controlLayerGrp: {},
 		drawnWallsLayerGrp: {},
+		labelsLayerGrp: {},
 		fitBondsAfterLoad: true,
 		showSizeArrows: true,
 		dontShowSmallSizeLabels: 0.5,
@@ -6695,6 +6942,9 @@ L.Control.RSWEIndoor = L.Control.extend({
 			savePNGDialog: function () { return new L.Control.Dialog.SavePNG(); },
 			saveJPGDialog: function () { return new L.Control.Dialog.SaveJPG(); }
 		}
+//		contextMenus: {
+//			squareLabelContextMenu: function () { return new L.Map.ContextMenu(); },
+//		}
 	},
 
 	DeleteRoom: function (layer) {
@@ -6702,33 +6952,53 @@ L.Control.RSWEIndoor = L.Control.extend({
 		var wall;
 		var roomId, i;
 
+//		var layerId;
+/* jshint ignore:start */
+//		var layerId = layer._leaflet_id;
+/* jshint ignore:end */
+
+//		layer === this.options.layers[roomId].controlLayer;
+
 		for (roomId = 0; roomId < this.options.layers.length; roomId++) {
-			if (layer === this.options.layers[roomId].controlLayer) {
-
-
-				for (i = 0; i < this.options.roomWallsProps[roomId].length; i++) {
-					delete this.options.roomWallsProps[roomId][i];
-				}
-
-				for (i = 0; i < this.options.layers[roomId].roomWalls.length; i++) {
-					wall = this.options.layers[roomId].roomWalls[i];
-/* jshint ignore:start */
-					this.options.drawnWallsLayerGrp.removeLayer(wall._leaflet_id);
-/* jshint ignore:end */
-				}
-/* jshint ignore:start */
-				this.options.controlLayerGrp.removeLayer(layer._leaflet_id);
-/* jshint ignore:end */
-				this.options.layers[roomId].roomWalls.length = 0;
-
-				this.options.layers.splice(roomId, 1);
-
-				this.options.roomProps.splice(roomId, 1);
-				this.options.roomWallsProps.splice(roomId, 1);
-
-				break;
-			}
+			if (layer === this.options.layers[roomId].controlLayer) { break; }
 		}
+
+		for (i = 0; i < this.options.roomWallsProps[roomId].length; i++) {
+			delete this.options.roomWallsProps[roomId][i];
+		}
+
+		for (i = 0; i < this.options.layers[roomId].roomWalls.length; i++) {
+			wall = this.options.layers[roomId].roomWalls[i];
+
+			this.options.drawnWallsLayerGrp.removeLayer(L.stamp(wall));
+/* jshint ignore:start */
+//					this.options.drawnWallsLayerGrp.removeLayer(wall._leaflet_id);
+/* jshint ignore:end */
+		}
+
+		this.options.labelsLayerGrp.eachLayer(function (layerLbl) {
+			if (layerLbl.options.relatedToLayer === layer) {
+				layerLbl._map.RSWEIndoor.options.labelsLayerGrp.removeLayer(L.stamp(layerLbl));
+/* jshint ignore:start */
+/* jshint ignore:end */
+			}
+		});
+
+
+		this.options.controlLayerGrp.removeLayer(L.stamp(layer));
+/* jshint ignore:start */
+//				this.options.controlLayerGrp.removeLayer(layer._leaflet_id);
+/* jshint ignore:end */
+		this.options.layers[roomId].roomWalls.length = 0;
+
+		this.options.layers.splice(roomId, 1);
+
+		this.options.roomProps.splice(roomId, 1);
+		this.options.roomWallsProps.splice(roomId, 1);
+
+//		break;
+//			}
+//		}
 		for (var j = 0, n = this.options.snapOptions.snapLayersArray.length; j < n; j++) {
 			if (L.stamp(layer) === L.stamp(this.options.snapOptions.snapLayersArray[j])) {
 				this.options.snapOptions.snapLayersArray.splice(j, 1);
@@ -6739,6 +7009,9 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 	RedrawRoom: function (layer, layerType) {
 		var layerClass = 'undefined';
+
+		if (layer.options.layerType === 'square') { return; }
+		if (layer.options.layerType === 'roomname') { return; }
 
 		if (layer instanceof L.Rectangle) {
 			layerClass = 'rectangle';
@@ -6764,14 +7037,23 @@ L.Control.RSWEIndoor = L.Control.extend({
 		
 			this.options.controlLayerGrp.addLayer(layer);
 
-			layer.snapediting = new L.Handler.MarkerSnap(map, layer);
-			layer.snapediting.addGuideLayer(this.options.controlLayerGrp);
-			layer.snapediting.enable();
-
+//			layer.snapediting = new L.Handler.MarkerSnap(map, layer);
+//			layer.snapediting.addGuideLayer(this.options.controlLayerGrp);
+//			layer.snapediting.enable();
 
 			return;
 		}
 
+//		var layerId;
+/* jshint ignore:start */
+//		var layerId = layer._leaflet_id;
+/* jshint ignore:end */
+
+		this.options.labelsLayerGrp.eachLayer(function (layerLbl) {
+			if (layerLbl.options.relatedToLayer === layer) {
+				layerLbl._map.RSWEIndoor.options.labelsLayerGrp.removeLayer(L.stamp(layerLbl));
+			}
+		});
 
 
 //		var _WallWidth = this.options.wallWidth * 0.5;
@@ -6821,18 +7103,52 @@ L.Control.RSWEIndoor = L.Control.extend({
 			g1, g2, g11, g12, g21, g22,
 			d01, d11, d12, d02, d21, d22,
 			center, centerL, centerR,// heightPointL, heightPointR,
-			roomcenter, roomcenterH, roomcenterL, square;
-//			tmpLatLng;
-
-		var getLeftClickFunc = function (roomId, wallId) { return function () { this.ChangeWallType(roomId, wallId); }; };
-
-		var _dlgWallProps = new L.Control.Dialog.WallProps().addTo(map);
+			roomcenter, square,
+			bindLabelPoint, bindLabelPointH, bindLabelPointL;
+		var label1, label2;
 		var getRightClickFunc = function (roomId, wallId) {
-			return function () {
-				_dlgWallProps.setDlgInputs(roomId, wallId);
-				_dlgWallProps.open();
+			return function (event) {
+				new L.WallToolbarPopup(roomId, wallId, event.latlng).addTo(map, controlWall);
 			};
 		};
+
+
+
+
+/*
+		var editActions = [
+			L.ToolbarAction.extendOptions({toolbarIcon: { html: 'Edit', className: 'leaflet-draw-edit-edit' }}),
+			L.ToolbarAction.extendOptions({toolbarIcon: { html: 'Remove', className: 'leaflet-draw-edit-remove' },
+				callback: function (map) { map.removeLayer(controlWall); } }),
+
+			L.ToolbarActionInput.extendOptions({toolbarIcon: { html: 'Input', className: 'leaflet-draw-edit-edit' },
+				callback: function (map) { map.removeLayer(controlWall); } })
+//				callback: function (map) { map.removeLayer(controlWall); } }),
+
+//			L.Edit.Popup.Edit,
+//			L.Edit.Popup.Delete,
+			L.ToolbarAction.extendOptions({
+				toolbarIcon: {
+					className: 'leaflet-color-picker',
+					html: '<span class="fa fa-eyedropper"></span>'
+				},
+				subToolbar: new L.CustomToolbar({ actions: [
+					L.ColorPicker.extendOptions({ color: '#db1d0f' }),
+					L.ColorPicker.extendOptions({ color: '#025100' }),
+					L.ColorPicker.extendOptions({ color: '#ffff00' }),
+					L.ColorPicker.extendOptions({ color: '#0000ff' })
+				]})
+			})
+
+		];
+*/
+		var getRightClickFunc1 = function (roomId) {//roomId, wallId) {
+			return function (event) {
+				new L.SquareToolbarPopup(roomId, event.latlng).addTo(map, controlWall);
+			};
+		};
+
+
 
 		if (latLngs.length > 1) {
 //bugfix: correcting situation in case zero distance between verticies delete merged verticies
@@ -7151,31 +7467,31 @@ L.Control.RSWEIndoor = L.Control.extend({
 						distance =  ar2.distanceTo(ar1);
 						if (distance > _dontShowSmallSizeLabels) {
 //arrow body
-							controlWall = new L.Polyline([ar1, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
-							controlWall.options.layerType = 'size-arrows';//'control';
-							this.options.drawnWallsLayerGrp.addLayer(controlWall);
-							roomWalls.push(controlWall);
+							wall = new L.Polyline([ar1, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							wall.options.layerType = 'size-arrows';//'control';
+							this.options.drawnWallsLayerGrp.addLayer(wall);
+							roomWalls.push(wall);
 //draw sizes
 //arrow ends
-							controlWall = new L.Polygon([ar1L, ar1R, ar1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
-							controlWall.options.layerType = 'size-arrows';//'control';
-							this.options.drawnWallsLayerGrp.addLayer(controlWall);
-							roomWalls.push(controlWall);
+							wall = new L.Polygon([ar1L, ar1R, ar1], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							wall.options.layerType = 'size-arrows';//'control';
+							this.options.drawnWallsLayerGrp.addLayer(wall);
+							roomWalls.push(wall);
 
-							controlWall = new L.Polygon([ar2L, ar2R, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
-							controlWall.options.layerType = 'size-arrows';//'control';
-							this.options.drawnWallsLayerGrp.addLayer(controlWall);
-							roomWalls.push(controlWall);
+							wall = new L.Polygon([ar2L, ar2R, ar2], {color: '#FFFFFF', weight: 1, opacity: 1, fillOpacity: 1});
+							wall.options.layerType = 'size-arrows';//'control';
+							this.options.drawnWallsLayerGrp.addLayer(wall);
+							roomWalls.push(wall);
 //lenght scalabletext
 							if (centerL.lat > centerR.lat) {
-								controlWall = new L.ScalableText(' ' + (distance + 0.0001).toFixed(2) + ' m ', centerR, centerL);
+								wall = new L.ScalableText(' ' + (distance + 0.0001).toFixed(2) + ' m ', centerR, centerL).addTo(map);
 							} else {
 //reversed
-								controlWall = new L.ScalableText(' ' + (distance + 0.0001).toFixed(2) + ' m ', centerL, centerR);
+								wall = new L.ScalableText(' ' + (distance + 0.0001).toFixed(2) + ' m ', centerL, centerR).addTo(map);
 							}
-							controlWall.options.layerType = 'size-text';
-							this.options.drawnWallsLayerGrp.addLayer(controlWall);
-							roomWalls.push(controlWall);
+							wall.options.layerType = 'size-text';
+							this.options.drawnWallsLayerGrp.addLayer(wall);
+							roomWalls.push(wall);
 						}
 					}
 
@@ -7512,44 +7828,125 @@ L.Control.RSWEIndoor = L.Control.extend({
 					roomWalls.push(wall);
 
 				}
-
-				this.options.controlLayerGrp.bringToBack();
-
 				if (controlWall) { controlWall.on('contextmenu', getRightClickFunc(roomId, wallId), this); }
-				if (controlWall) { controlWall.on('click', getLeftClickFunc(roomId, wallId), this); }
-
 			}
+
 //save structures
 			this.options.roomWallsProps[roomId] = roomWallsProps;
 			this.options.roomProps[roomId] = roomProps;
 
 			this.options.layers[roomId] = {controlLayer: layer, roomWalls: roomWalls};
+//calculate square      
+			if (!this.options.roomProps[roomId].freezeSquare) { this.calcRoomSquare(roomId); }
 
-//calculate square
-			this.calcRoomSquare(roomId);
+//get label bindlabelpoint
+			if (this.options.roomProps[roomId].freezeLabel) {
+				bindLabelPoint = new L.LatLng(
+					parseFloat(this.options.roomProps[roomId].bindLabelPoint.lat),
+					parseFloat(this.options.roomProps[roomId].bindLabelPoint.lng));
+//				bindLabelPoint = L.LatLngUtil.cloneLatLng(this.options.roomProps[roomId].bindLabelPoint);
+			}
+			if (!bindLabelPoint) {
+				bindLabelPoint = L.LatLngUtil.cloneLatLng(roomcenter);
+			}
+//			console.log(bindLabelPoint, roomcenter);
 
-			roomcenterH = new L.LatLng(roomcenter.lat + 0.01, roomcenter.lng);
-			distance =  roomcenter.distanceTo(roomcenterH);
+			bindLabelPointH = new L.LatLng(bindLabelPoint.lat + 0.01, bindLabelPoint.lng);
+			distance =  bindLabelPoint.distanceTo(bindLabelPointH);
+			bindLabelPointH.lat = bindLabelPoint.lat + (bindLabelPointH.lat - bindLabelPoint.lat) * 2 * (this.options.wallWidth / distance);
+			bindLabelPointH.lng = bindLabelPoint.lng + (bindLabelPointH.lng - bindLabelPoint.lng) * 2 * (this.options.wallWidth / distance);
+			bindLabelPointL = new L.LatLng(bindLabelPoint.lat - (bindLabelPointH.lat - bindLabelPoint.lat),
+				bindLabelPoint.lng - (bindLabelPointH.lng - bindLabelPoint.lng));
 
+			if (this.options.roomProps[roomId].roomName) {
+				if (this.options.roomProps[roomId].roomName.length > 0) {
 
-			roomcenterH.lat = roomcenter.lat + (roomcenterH.lat - roomcenter.lat) * 2 * (this.options.wallWidth / distance);
-			roomcenterH.lng = roomcenter.lng + (roomcenterH.lng - roomcenter.lng) * 2 * (this.options.wallWidth / distance);
+					label1 = new L.ScalableText(this.options.roomProps[roomId].roomName,
 
-			roomcenterL = new L.LatLng(roomcenter.lat - (roomcenterH.lat - roomcenter.lat), roomcenter.lng - (roomcenterH.lng - roomcenter.lng));
+						L.LatLngUtil.cloneLatLng(bindLabelPoint), L.LatLngUtil.cloneLatLng(bindLabelPointH),
+						{'bgColor': 'transparent', 'attributes': {'fill': 'white'},
+						editable: true,
+						onDrag: function (marker, deltaLatLng) {
+							this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].freezeLabel = true;
+							this._scalabletext._map.RSWEIndoor.options.labelsLayerGrp.eachLayer(function (layerLbl) {
+								if (layerLbl.options.relatedToLayer === layer) {
+									layerLbl._latlngs[0].lat += parseFloat(deltaLatLng.lat);
+									layerLbl._latlngs[0].lng += parseFloat(deltaLatLng.lng);
+									layerLbl._latlngs[1].lat += parseFloat(deltaLatLng.lat);
+									layerLbl._latlngs[1].lng += parseFloat(deltaLatLng.lng);
+//									for (var i = 0, len = this._markers.length; i < len; i++) {
+//									if (layerLbl !== label1) {
+//									if (layerLbl !== this) {
+
+//										layerLbl._markers[0].lat += parseFloat(deltaLatLng.lat);
+//										layerLbl._markers[0].lng += parseFloat(deltaLatLng.lng);
+//									}
+									layerLbl.redraw();
+								}
+							});
+							this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].freezeLabel = true;
+							this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].bindLabelPoint = L.LatLngUtil.cloneLatLng(marker._latlng);
+						}
+					}).addTo(map);
+
+					label1.options.layerType = 'roomname';
+					label1.options.relatedToLayer = layer;
+
+					this.options.controlLayerGrp.addLayer(label1);
+					this.options.labelsLayerGrp.addLayer(label1);
+					label1.on('contextmenu', getRightClickFunc1(roomId), this);
+				}
+			}
 
 			if (this._map.RSWEIndoor.options.showSquareLabels) {
 				square = this.options.roomProps[roomId].roomSquare;
-				if (square > this._map.RSWEIndoor.options.dontShowSquaresLessThan) {
-					if (layer.options.layerType === 'wall') {// && layer.isConvex()) {
-						controlWall = new L.ScalableText(' ' + (square + 0.0001).toFixed(1) + ' m\u00B2 ', roomcenterL, roomcenterH,
-						{'bgColor': 'transparent', 'attributes': {'fill': 'white'}});
-						controlWall.options.layerType = 'square';
-						this.options.drawnWallsLayerGrp.addLayer(controlWall);
-						roomWalls.push(controlWall);
+				if (layer.options.layerType === 'wall') {// && layer.isConvex()) {
+					if (square > this._map.RSWEIndoor.options.dontShowSquaresLessThan ||
+						this.options.roomProps[roomId].freezeSquare) {
+						if (!this.options.roomProps[roomId].hideSquare) {
+							label2 = new L.ScalableText(' ' + (Number(square) + 0.0001).toFixed(1) + ' m\u00B2 ',
+								L.LatLngUtil.cloneLatLng(bindLabelPointL), L.LatLngUtil.cloneLatLng(bindLabelPoint),
+								{'bgColor': 'transparent', 'attributes': {'fill': 'white'},
+								editable: (!label1 ? true: false),
+								markerOnTop: true,
+								onDrag: function (marker, deltaLatLng) {
+									this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].freezeLabel = true;
+									this._scalabletext._map.RSWEIndoor.options.labelsLayerGrp.eachLayer(function (layerLbl) {
+										if (layerLbl.options.relatedToLayer === layer) {
+											layerLbl._latlngs[0].lat += parseFloat(deltaLatLng.lat);
+											layerLbl._latlngs[0].lng += parseFloat(deltaLatLng.lng);
+											layerLbl._latlngs[1].lat += parseFloat(deltaLatLng.lat);
+											layerLbl._latlngs[1].lng += parseFloat(deltaLatLng.lng);
+
+//											if (layerLbl !== this) {
+//											for (var i = 0, len = this._markers.length; i < len; i++) {
+//												layerLbl._markers[0].lat += parseFloat(deltaLatLng.lat);
+//												layerLbl._markers[0].lng += parseFloat(deltaLatLng.lng);
+//											}
+
+											layerLbl.redraw();
+										}
+									});
+									this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].freezeLabel = true;
+									this._scalabletext._map.RSWEIndoor.options.roomProps[roomId].bindLabelPoint =
+										L.LatLngUtil.cloneLatLng(marker._latlng);
+								}
+							}).addTo(map);
+							label2.options.layerType = 'square';
+							label2.options.relatedToLayer = layer;
+
+							this.options.controlLayerGrp.addLayer(label2);
+							this.options.labelsLayerGrp.addLayer(label2);
+
+							label2.on('contextmenu', getRightClickFunc1(roomId), this);
+						}
+
+
 					}
 				}
 			}
 		}
+		this.options.controlLayerGrp.bringToBack();
 
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'square') { layer.bringToFront(); } });
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) { if (layer.options.layerType === 'rectangle') { layer.bringToFront(); } });
@@ -7610,6 +8007,13 @@ L.Control.RSWEIndoor = L.Control.extend({
 */
 		});
 	},
+	showAllSquareLabels : function () {
+		for (var roomId = 0, len = this.options.roomProps.length; roomId < len; roomId++) {
+			this.options.roomProps[roomId].hideSquare = false;
+		}
+		this._map.fire('redraw:all');
+	},
+
 	calcRoomSquare: function (roomId) {
 		if (!this.options.layers[roomId].controlLayer) { return; }
 		var layer = this.options.layers[roomId].controlLayer;
@@ -7762,8 +8166,11 @@ L.Control.RSWEIndoor = L.Control.extend({
 			 '" height="' + (latToPixelY(bnds.getSouth()) + 1) +
 			 '" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">\r\n';
 
-		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
+		this.options.labelsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'square') { outSVG += self.layerToSVG(layer); }
+		});
+		this.options.labelsLayerGrp.eachLayer(function (layer) {
+			if (layer.options.layerType === 'roomname') { outSVG += self.layerToSVG(layer); }
 		});
 		this.options.drawnWallsLayerGrp.eachLayer(function (layer) {
 			if (layer.options.layerType === 'rectangle') { outSVG += self.layerToSVG(layer); }
@@ -7875,33 +8282,57 @@ L.Control.RSWEIndoor = L.Control.extend({
 			return outLayer;
 		}
 		if (layer instanceof L.ScalableText) {
-			var fontSize = layer._textNode.getAttribute('font-size').replace('px', '');
+			var fontSize = layer._textNode.getAttribute('font-size').replace('px', ''); //fontsize = 10
+			var scale = 1.0;//fontSize / 10;
+			var transform = '';
+
 			var textWidth = layer._textNode.getComputedTextLength();
 
-			var coslat1 = Math.cos(layer.bindPoint.lat * Math.PI / 180);
+			var coslat1 = Math.cos(layer._latlngs[0].lat * Math.PI / 180);
 
-			var rotateAngle1 = Math.atan2(-layer.bindPoint.lat + layer.heightPoint.lat,
-				(layer.bindPoint.lng - layer.heightPoint.lng) * coslat1) * 180 / Math.PI - 90;
+			var rotateAngle1 = Math.atan2(-layer._latlngs[0].lat + layer._latlngs[1].lat,
+				(layer._latlngs[0].lng - layer._latlngs[1].lng) * coslat1) * 180 / Math.PI - 90;
 
-			var transform = 'translate('  + lngToPixelX(layer.bindPoint.lng)  + '.5' +
-			' ' + latToPixelY(layer.bindPoint.lat) + '.5' + ')' +
-//				' scale(' + scaleH + ') '
-			' rotate(' + rotateAngle1 + ')';
 
 			if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
 
 			if (layer.options.layerType === 'size-text') {
+				scale = scale * 1.0;//(font-size / 10)
+				transform = 'translate('  + lngToPixelX(layer._latlngs[0].lng)  + '.5' +
+					' ' + latToPixelY(layer._latlngs[0].lat) + '.5' + ')' +
+					' scale(' + scale.toFixed(3) + ') ' +
+					' rotate(' + rotateAngle1 + ')';
+				if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
 				outLayer = '<g><g transform="' + transform + '">' +
 					'<rect x="-2" y="-10" height="10" fill="black" width="' + textWidth * 12 / fontSize  + '"/>' +
 					'<text fill="white" text-anchor="start" y="-1" font-size="12px" font-family="Arial">' +
 					layer._text + '</text></g></g>\r\n';
 			}
-			if (layer.options.layerType === 'square') {
+			if (layer.options.layerType === 'roomname') {
+				scale = scale * 16 / 10;//(font-size / 10)
+				transform = 'translate('  + lngToPixelX(layer._latlngs[0].lng)  + '.5' +
+					' ' + latToPixelY(layer._latlngs[0].lat) + '.5' + ')' +
+					' scale(' + scale.toFixed(3) + ') ' +
+					' rotate(' + rotateAngle1 + ')';
+				if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
 				outLayer = '<g><g transform="' + transform + '">' +
-//					'<rect x="-4" y="-20" height="20" fill="transparent" width="' + textWidth * 24 / fontSize  + '"/>' +
-					'<text fill="#dddddd" text-anchor="start" y="-2" font-size="24px" font-family="Arial">' +
+//					'<rect x="-4" y="-20" height="20" fill="transparent" width="' + textWidth * 20 / fontSize  + '"/>' +
+					'<text fill="#dddddd" text-anchor="start" y="-5" font-size="18px" font-family="Arial">' +
 					layer._text + '</text></g></g>\r\n';
 			}
+			if (layer.options.layerType === 'square') {
+				scale = scale * 16 / 10;//(font-size / 10)
+				transform = 'translate('  + lngToPixelX(layer._latlngs[0].lng)  + '.5' +
+					' ' + latToPixelY(layer._latlngs[0].lat) + '.5' + ')' +
+					' scale(' + scale.toFixed(3) + ') ' +
+					' rotate(' + rotateAngle1 + ')';
+				if (layer.options.center) { transform = transform + ' translate('  + (-0.5 * textWidth) + ')'; }
+				outLayer = '<g><g transform="' + transform + '">' +
+//					'<rect x="-4" y="-20" height="20" fill="transparent" width="' + textWidth * 20 / fontSize  + '"/>' +
+					'<text fill="#dddddd" text-anchor="start" y="-1" font-size="18px" font-family="Arial">' +
+					layer._text + '</text></g></g>\r\n';
+			}
+
 			return outLayer;
 		}
 		return outLayer;
@@ -7912,10 +8343,13 @@ L.Control.RSWEIndoor = L.Control.extend({
 			roomWallsProps: this.options.roomWallsProps
 		};
 		return JSON.stringify(data);
+//		return L.Util.base64Utf8Encode(JSON.stringify(data));
+
 	},
 
 	loadData: function (data) {
 //if data == empty clear drawing
+//		data = L.Util.base64Utf8Decode(data);
 		if (!data) { data = '{"roomProps":[],"roomWallsProps":[]}'; }
 		var dataObj;
 		try {
@@ -7930,6 +8364,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		this.options.drawnWallsLayerGrp.clearLayers();
 		this.options.controlLayerGrp.clearLayers();
+		this.options.labelsLayerGrp.clearLayers();
 //create data from loaded structures
 		this.options.roomProps = dataObj.roomProps;
 		this.options.roomWallsProps = dataObj.roomWallsProps;
@@ -7943,7 +8378,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 			if (layer) {
 
 				layer.addTo(this._map);
-				layer.setStyle({opacity: 0});
+				if (layer.setStyle) { layer.setStyle({opacity: 0}); }
 				this.options.controlLayerGrp.addLayer(layer);
 //reinitialize layers as if they were created via drawing toolbar
 				this.RedrawRoom(layer);
@@ -7981,6 +8416,9 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.RSWEIndoor.options.drawnWallsLayerGrp = new L.FeatureGroup();
 		map.addLayer(map.RSWEIndoor.options.drawnWallsLayerGrp);
+
+		map.RSWEIndoor.options.labelsLayerGrp = new L.FeatureGroup();
+		map.addLayer(map.RSWEIndoor.options.labelsLayerGrp);
 
 		map.options.snapGrid.options.interval =  map.RSWEIndoor.options.snapOptions.gridStep;
 		if (map.RSWEIndoor.options.snapOptions.displaySnapGrid) { map.options.snapGrid.show(); }
@@ -8053,7 +8491,8 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.on('draw:editstart_after', function () {
 			map.RSWEIndoor.options.controlLayerGrp.eachLayer(function (layer) {
-				layer.setStyle({opacity: 0.6});
+				if (layer.setStyle) { layer.setStyle({opacity: 0.6}); }
+				
 
 				if (layer.editing._poly !== undefined) {
 					if (layer.snapediting === undefined) {
@@ -8083,7 +8522,7 @@ L.Control.RSWEIndoor = L.Control.extend({
 
 		map.on('draw:editstop', function () {
 			map.RSWEIndoor.options.controlLayerGrp.eachLayer(function (layer) {
-				layer.setStyle({opacity: 0});
+				if (layer.setStyle) { layer.setStyle({opacity: 0}); }
 
 				if (layer.editing._poly !== undefined) {
 					if (layer.snapediting !== undefined) {
@@ -8116,14 +8555,20 @@ L.Control.RSWEIndoor = L.Control.extend({
 		});
 
 		map.on('draw:created', function (e) {
-			e.layer.setStyle({opacity: 0});
+			if (e.layer.setStyle) { e.layer.setStyle({opacity: 0}); }
 			map.RSWEIndoor.RedrawRoom(e.layer, e.layerType);
 		});
 
 		map.on('redraw:all', function () {
+			map.RSWEIndoor.options.labelsLayerGrp.clearLayers();
+
 			map.RSWEIndoor.options.controlLayerGrp.eachLayer(function (layer) {
 				map.RSWEIndoor.RedrawRoom(layer);
 			});
+		});
+
+		map.on('redraw:showAllSquareLabels', function () {
+			map.RSWEIndoor.showAllSquareLabels();
 		});
 
 	}
@@ -8160,6 +8605,767 @@ L.Map.addInitHook(function () {
 //L.control.rsweindoor = function (options) {
 //	return new L.Control.RSWEIndoor(options);
 //};
+
+L.CustomToolbar = (L.Layer || L.Class).extend({
+	statics: {
+		baseClass: 'leaflet-toolbar'
+	},
+
+	includes: L.Mixin.Events,
+
+	options: {
+		className: '',
+		filter: function () { return true; },
+		actions: []
+	},
+
+	initialize: function (options) {
+		L.setOptions(this, options);
+		this._toolbarType = this.constructor._toolbarClassId;
+	},
+
+	addTo: function (map) {
+		this._arguments = [].slice.call(arguments);
+
+		map.addLayer(this);
+
+		return this;
+	},
+
+	onAdd: function (map) {
+		var currentToolbar = map._customtoolbars[this._toolbarType];
+
+		if (this._calculateDepth() === 0) {
+			if (currentToolbar) { map.removeLayer(currentToolbar); }
+			map._customtoolbars[this._toolbarType] = this;
+		}
+	},
+
+	onRemove: function (map) {
+		/* 
+		 * TODO: Cleanup event listeners. 
+		 * For some reason, this throws:
+		 * "Uncaught TypeError: Cannot read property 'dragging' of null"
+		 * on this._marker when a toolbar icon is clicked.
+		 */
+		// for (var i = 0, l = this._disabledEvents.length; i < l; i++) {
+		// 	L.DomEvent.off(this._ul, this._disabledEvents[i], L.DomEvent.stopPropagation);
+		// }
+
+		if (this._calculateDepth() === 0) {
+			delete map._customtoolbars[this._toolbarType];
+		}
+	},
+	remove: function () {
+		this._map.removeLayer(this);
+	},
+
+	appendToContainer: function (container) {
+		var baseClass = this.constructor.baseClass + '-' + this._calculateDepth(),
+			className = baseClass + ' ' + this.options.className,
+			Action, action,
+			i, j, l, m;
+
+		this._container = container;
+		this._ul = L.DomUtil.create('ul', className, container);
+
+/* Ensure that clicks, drags, etc. don't bubble up to the map. */
+		this._disabledEvents = ['click', 'mousemove', 'dblclick'];
+
+		for (j = 0, m = this._disabledEvents.length; j < m; j++) {
+			L.DomEvent.on(this._ul, this._disabledEvents[j], L.DomEvent.stopPropagation);
+		}
+
+/* Instantiate each toolbar action and add its corresponding toolbar icon. */
+		for (i = 0, l = this.options.actions.length; i < l; i++) {
+			Action = this._getActionConstructor(this.options.actions[i]);
+
+			action = new Action();
+			action._createIcon(this, this._ul, this._arguments);
+		}
+	},
+
+	_getActionConstructor: function (Action) {
+		var args = this._arguments,
+			toolbar = this;
+
+		return Action.extend({
+			initialize: function () {
+				Action.prototype.initialize.apply(this, args);
+			},
+			enable: function (e) {
+				/* Ensure that only one action in a toolbar will be active at a time. */
+				if (toolbar._active) { toolbar._active.disable(); }
+				toolbar._active = this;
+
+				Action.prototype.enable.call(this, e);
+			}
+		});
+	},
+/* Used to hide subToolbars without removing them from the map. */
+	_hide: function () {
+		this._ul.style.display = 'none';
+	},
+/* Used to show subToolbars without removing them from the map. */
+	_show: function () {
+		this._ul.style.display = 'block';
+	},
+	_calculateDepth: function () {
+		var depth = 0,
+			toolbar = this.parentToolbar;
+
+		while (toolbar) {
+			depth += 1;
+			toolbar = toolbar.parentToolbar;
+		}
+		return depth;
+	}
+});
+
+L.customtoolbar = {};
+
+var toolbarClassId = 0;
+
+L.CustomToolbar.extend = function extend(props) {
+	var statics = L.extend({}, props.statics, {
+		'_toolbarClassId': toolbarClassId
+	});
+
+	toolbarClassId += 1;
+	L.extend(props, { statics: statics });
+
+	return L.Class.extend.call(this, props);
+};
+
+L.Map.addInitHook(function () {
+	this._customtoolbars = {};
+});
+
+
+L.ToolbarAction = L.Handler.extend({
+	statics: {
+		baseClass: 'leaflet-toolbar-icon'
+	},
+	options: {
+		toolbarIcon: {
+			html: '',
+			className: '',
+			tooltip: ''
+		},
+		isHidden: function () { return false; },
+		separator: false,
+		subToolbar: new L.CustomToolbar()
+	},
+	initialize: function (options) {
+		var defaultIconOptions = L.ToolbarAction.prototype.options.toolbarIcon;
+		L.setOptions(this, options);
+		this.options.toolbarIcon = L.extend({}, defaultIconOptions, this.options.toolbarIcon);
+	},
+	enable: function (e) {
+		if (e) { L.DomEvent.preventDefault(e); }
+		if (this._enabled) { return; }
+		this._enabled = true;
+
+		if (this.addHooks) { this.addHooks(); }
+
+		if (this._map && this.toolbar) {
+			if (typeof this.options.callback === 'function') { this.options.callback.call(this, this._map); }
+//autoclose if has no subtoolbars
+			if (this.options.subToolbar.options.actions.length === 0) { this._map.removeLayer(this.toolbar); }
+		}
+	},
+	disable: function () {
+		if (!this._enabled) { return; }
+		this._enabled = false;
+
+		if (this.removeHooks) { this.removeHooks(); }
+	},
+	_createIcon: function (toolbar, container, args) {
+		var iconOptions = this.options.toolbarIcon;
+
+		this.toolbar = toolbar;
+		this._map = toolbar._map;
+
+		if (this.options.isHidden.call(this, this._map)) { return; }
+
+		this._icon = L.DomUtil.create('li', '', container);
+		this._link = L.DomUtil.create('a', '', this._icon);
+
+		if (this.options.separator) { L.DomUtil.addClass(this._link, 'leaflet-toolbar-icon-separator'); }
+
+		this._link.innerHTML = '<div>' + iconOptions.html + '</div>';
+		this._link.setAttribute('href', '#');
+		this._link.setAttribute('title', iconOptions.tooltip);
+
+		L.DomUtil.addClass(this._link, this.constructor.baseClass);
+		if (iconOptions.className) {
+			L.DomUtil.addClass(this._link, iconOptions.className);
+		}
+
+		L.DomEvent.on(this._link, 'click', this.enable, this);
+
+		/* Add secondary toolbar */
+		this._addSubToolbar(toolbar, this._icon, args);
+	},
+
+	_addSubToolbar: function (toolbar, container, args) {
+		var subToolbar = this.options.subToolbar,
+			addHooks = this.addHooks,
+			removeHooks = this.removeHooks;
+/* For calculating the nesting depth. */
+		subToolbar.parentToolbar = toolbar;
+
+		if (subToolbar.options.actions.length > 0) {
+/* Make a copy of args so as not to pollute the args array used by other actions. */
+			args = [].slice.call(args);
+			args.push(this);
+
+			subToolbar.addTo.apply(subToolbar, args);
+			subToolbar.appendToContainer(container);
+
+			this.addHooks = function (map) {
+				if (typeof addHooks === 'function') { addHooks.call(this, map); }
+				subToolbar._show();
+			};
+
+			this.removeHooks = function (map) {
+				if (typeof removeHooks === 'function') { removeHooks.call(this, map); }
+				subToolbar._hide();
+			};
+		}
+	}
+});
+/* no factory class
+L.toolbaraction = function toolbaraction(options) {
+	return new L.ToolbarAction(options);
+};
+*/
+
+L.ToolbarAction.extendOptions = function (options) {
+	return this.extend({ options: options });
+};
+
+
+L.ToolbarActionInput = L.ToolbarAction.extend({
+	statics: {
+		baseClass: 'leaflet-toolbar-icon'
+	},
+
+	options: {
+		toolbarIcon: {
+			html: '',
+			className: '',
+			tooltip: ''
+		},
+		isHidden: function () { return false; },
+		separator: false,
+		placeholder: '',
+		setInitValue: function () { return ''; }
+	},
+	enable: function (event) {
+//action  for saving input field
+		var result = false;
+
+		if (event) { L.DomEvent.preventDefault(event); }
+		if (this._enabled) { return; }
+		this._enabled = true;
+
+		if (this.addHooks) { this.addHooks(); }
+
+		if (this._map && this.toolbar) {
+			if (typeof this.options.callback === 'function') { result = this.options.callback.call(this, this._map, this._input); }
+//autoclose if result = true
+			if (result) { this._map.removeLayer(this.toolbar); }
+		}
+	},
+	enableOnEnter: function (event) {
+		if (event.which === 13) {
+			this._input.blur();
+			this.enable(event);
+		}
+	},
+	disable: function () {
+		if (!this._enabled) { return; }
+		this._enabled = false;
+
+		if (this.removeHooks) { this.removeHooks(); }
+	},
+	_createIcon: function (toolbar, container) {//, args) {
+
+		var iconOptions = this.options.toolbarIcon;
+
+		this.toolbar = toolbar;
+		this._map = toolbar._map;
+
+		if (this.options.isHidden.call(this, this._map)) { return; }
+
+		this._icon = L.DomUtil.create('li', '', container);
+		this._link = L.DomUtil.create('a', 'leaflet-toolbar-icon-input', this._icon);
+
+		if (this.options.separator) { L.DomUtil.addClass(this._link, 'leaflet-toolbar-icon-separator');	}
+
+		this._link.setAttribute('href', '#');
+		this._link.setAttribute('title', iconOptions.tooltip);
+		L.DomUtil.addClass(this._link, this.constructor.baseClass);
+
+		if (iconOptions.className) {
+			L.DomUtil.addClass(this._link, iconOptions.className);
+		}
+
+		L.DomEvent.on(this._link, 'click', this.enable, this);
+
+		this._div = L.DomUtil.create('div', 'leaflet-toolbar-div-input', this._icon);
+
+		if (this.options.separator) { L.DomUtil.addClass(this._div, 'leaflet-toolbar-icon-separator');	}
+
+		this._input = L.DomUtil.create('input', '', this._div);
+
+		this._input.setAttribute('onclick', 'this.select();');
+
+		L.DomEvent.on(this._input, 'keypress', this.enableOnEnter, this);
+
+		this._input.setAttribute('type', 'text');
+
+		if (typeof this.options.setInitValue === 'function') {
+			this._input.setAttribute('value', this.options.setInitValue.call(this, this._map, this._input));
+		}
+
+		if (this.options.placeholder) { this._input.setAttribute('placeholder', this.options.placeholder); }
+
+	}
+});
+/* no factory
+L.toolbaractioninput = function toolbaractioninput(options) {
+	return new L.ToolbarActionInput(options);
+};
+*/
+
+L.ToolbarActionInput.extendOptions = function (options) {
+	return this.extend({ options: options });
+};
+
+
+L.ToolbarActionLabel = L.ToolbarAction.extend({
+	statics: {
+		baseClass: 'leaflet-toolbar-icon'
+	},
+
+	options: {
+		toolbarIcon: {
+			html: '',
+			className: '',
+			tooltip: ''
+		},
+		isHidden: function () { return false; },
+		separator: false,
+		label: ''
+	},
+	enable: function (event) {
+//action  for saving input field
+		if (event) { L.DomEvent.preventDefault(event); }
+		this._enabled = false;
+		return;
+	},
+//	enableOnEnter: function (event) {
+//		if (event.which === 13) {
+//			this._input.blur();
+//			this.enable(event);
+//		}
+//	},
+	disable: function () {
+		if (!this._enabled) { return; }
+		this._enabled = false;
+
+		if (this.removeHooks) { this.removeHooks(); }
+	},
+	_createIcon: function (toolbar, container) {//, args) {
+		var iconOptions = this.options.toolbarIcon;
+
+		this.toolbar = toolbar;
+		this._map = toolbar._map;
+
+		if (this.options.isHidden.call(this, this._map)) { return; }
+
+		this._icon = L.DomUtil.create('li', '', container);
+		this._link = L.DomUtil.create('a', 'leaflet-toolbar-noicon leaflet-toolbar-label', this._icon);
+
+		if (this.options.separator) { L.DomUtil.addClass(this._link, 'leaflet-toolbar-icon-separator'); }
+
+		this._link.setAttribute('href', '#');
+		this._link.setAttribute('title', iconOptions.tooltip);
+		L.DomUtil.addClass(this._link, this.constructor.baseClass);
+
+		if (iconOptions.className) { L.DomUtil.addClass(this._link, iconOptions.className); }
+
+		L.DomEvent.on(this._link, 'click', this.enable, this);
+
+		this._div = L.DomUtil.create('div', 'leaflet-toolbar-div-label', this._link);
+
+		if (this.options.label) { this._div.innerHTML = this.options.label; }
+	}
+});
+/* no factory
+L.toolbaractionlabel = function toolbaractionlabel(options) {
+	return new L.ToolbarActionLabel(options);
+};
+*/
+
+L.ToolbarActionLabel.extendOptions = function (options) {
+	return this.extend({ options: options });
+};
+
+
+// A convenience class for built-in popup toolbars.
+
+L.ToolbarPopup = L.CustomToolbar.extend({
+	statics: {
+		baseClass: 'leaflet-popup-toolbar ' + L.CustomToolbar.baseClass
+	},
+
+	options: {
+		anchor: [0, 0]
+	},
+
+	initialize: function (latlng, options) {
+		L.CustomToolbar.prototype.initialize.call(this, options);
+
+		/* 
+		 * Developers can't pass a DivIcon in the options for L.Toolbar.Popup
+		 * (the use of DivIcons is an implementation detail which may change).
+		 */
+		this._marker = new L.Marker(latlng, {
+			icon : new L.DivIcon({
+				className: this.options.className,
+				iconSize: [0, 0],
+				iconAnchor: [0, 0]
+			})
+		});
+	},
+
+	onAdd: function (map) {
+		this._map = map;
+		this._marker.addTo(map);
+
+		this._map.fire('popups:hide', {'caller': this});
+
+		L.CustomToolbar.prototype.onAdd.call(this, map);
+
+		this.appendToContainer(this._marker._icon);
+
+		this._setStyles();
+
+		L.DomEvent.on(this._map.getContainer(), 'mouseleave', this.remove, this);
+
+
+		L.DomEvent
+			.on(this._container, 'click', L.DomEvent.stop)
+			.on(this._container, 'mousedown', L.DomEvent.stop)
+			.on(this._container, 'dblclick', L.DomEvent.stop)
+			.on(this._container, 'contextmenu', L.DomEvent.stop);
+
+		this._map.on({
+			'mousedown': this.remove,
+			'click': this.remove,
+			'movestart': this.remove,
+			'zoomstart': this.remove
+		}, this);
+
+		this._map.on({'popups:hide': this._onPopupsHide}, this);
+	},
+
+	_onPopupsHide: function (e) {
+		if (e.caller && e.caller !== this) { this.remove(); }
+	},
+
+	onRemove: function (map) {
+		L.DomEvent
+			.off(this._container, 'click', L.DomEvent.stop)
+			.off(this._container, 'mousedown', L.DomEvent.stop)
+			.off(this._container, 'dblclick', L.DomEvent.stop)
+			.off(this._container, 'contextmenu', L.DomEvent.stop);
+
+		L.DomEvent.off(this._map.getContainer(), 'mouseleave', this.remove, this);
+		this._map.off({
+			'mousedown': this.remove,
+			'click': this.remove,
+			'movestart': this.remove,
+			'zoomstart': this.remove
+		}, this);
+
+		this._map.off({'popups:hide': this._onPopupsHide}, this);
+
+		map.removeLayer(this._marker);
+
+		L.CustomToolbar.prototype.onRemove.call(this, map);
+
+		delete this._map;
+	},
+
+	setLatLng: function (latlng) {
+		this._marker.setLatLng(latlng);
+
+		return this;
+	},
+
+	_setStyles: function () {
+		var container = this._container,
+			toolbar = this._ul,
+			anchor = L.point(this.options.anchor),
+			icons = toolbar.querySelectorAll('.leaflet-toolbar-icon'),
+			buttonHeights = [],
+			buttonWidths = [],
+			toolbarWidth = 0,
+			toolbarHeight,
+			tipSize,
+			tipAnchor;
+
+		/* Calculate the dimensions of the toolbar. */
+		for (var i = 0, l = icons.length; i < l; i++) {
+			if (icons[i].parentNode.parentNode === toolbar) {
+				buttonHeights.push(parseInt(L.DomUtil.getStyle(icons[i], 'height'), 10));
+				buttonWidths.push(parseInt(L.DomUtil.getStyle(icons[i], 'width'), 10));
+
+//				toolbarWidth += Math.ceil(parseFloat(L.DomUtil.getStyle(icons[i], 'width')));
+//				toolbarWidth = Math.max(toolbarWidth, Math.ceil(parseFloat(L.DomUtil.getStyle(icons[i], 'width'))));
+			}
+		}
+//this is max
+		toolbarWidth = buttonWidths.reduce(function (val, current) { return Math.max(val, current); }, 0);
+//this is sum
+		toolbarHeight = buttonHeights.reduce(function (val, current) { return val + current; }, 0);
+
+//		toolbarWidth = buttonWidths.reduce(function (sum, current) { return sum + current; }, 0);
+//		toolbarHeight = Math.max.apply(undefined, buttonHeights);
+
+		toolbar.style.width = toolbarWidth + 'px';
+
+		/* Create and place the toolbar tip. */
+		this._tipContainer = L.DomUtil.create('div', 'leaflet-toolbar-tip-container', container);
+		this._tipContainer.style.width = toolbarWidth + 'px';
+
+		this._tip = L.DomUtil.create('div', 'leaflet-toolbar-tip', this._tipContainer);
+
+		/* Set the tipAnchor point. */
+		tipSize = parseInt(L.DomUtil.getStyle(this._tip, 'width'), 10);
+
+//		tipAnchor = new L.Point(toolbarWidth / 2, toolbarHeight + 0.7071 * tipSize);
+		tipAnchor = new L.Point(0, 0.7071 * tipSize);
+//		tipAnchor = new L.Point(toolbarWidth / 2, (toolbarHeight + 0.7071 * tipSize) / 2);
+
+		/* The anchor option allows app developers to adjust the toolbar's position. */
+		container.style.marginLeft = (anchor.x - tipAnchor.x) + 'px';
+		container.style.marginTop = (anchor.y - tipAnchor.y) + 'px';
+	}
+});
+/* no factory
+L.toolbarpopup = function (options) {
+    return new L.ToolbarPopup(options);
+};
+*/
+
+
+L.SquareToolbarPopup = L.ToolbarPopup.extend({
+	options: {
+		className: 'leaflet-draw-toolbar',
+		actions: [
+/*			L.ToolbarActionLabel.extendOptions({toolbarIcon: { html: '', className: 'leaflet-toolbar-noicon' },
+				label: 'Edit name:'
+			}),
+*/
+			L.ToolbarActionInput.extendOptions({toolbarIcon: { html: 'Input', className: 'leaflet-draw-edit-edit' },
+				setInitValue: function (map) {
+					var val = map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].roomName;
+					return val ? val : '';
+				},
+				separator: true,
+				placeholder: 'Room name',
+				callback: function (map, input) {
+//check decimal value
+					var val = input.value;
+
+					if (val.length <= 20) {
+						map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].roomName = val;
+						map.RSWEIndoor.RedrawRoom(map.RSWEIndoor.options.layers[this.toolbar.options.roomId].controlLayer);
+//enable close
+						return true;
+					} else {
+						input.value = val ? val.substr(0, 20) : '';
+						input.select();
+//disable close
+						return false;
+					}
+				}
+			}),
+/*
+			L.ToolbarActionLabel.extendOptions({toolbarIcon: { html: '', className: 'leaflet-toolbar-noicon' },
+				label: 'Edit square:',
+				isHidden: function (map) {
+					return !map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].hideSquare ? false : true;
+
+				}
+			}),
+*/
+			L.ToolbarActionInput.extendOptions({toolbarIcon: { html: 'Input', className: 'leaflet-draw-edit-edit' },
+				isHidden: function (map) {
+					return !map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].hideSquare ? false : true;
+				},
+				setInitValue: function (map) {
+					return Number(map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].roomSquare).toFixed(1);
+				},
+//				separator: true,
+				placeholder: 'Enter decimal',
+				callback: function (map, input) {
+//check decimal value
+					var val = input.value.replace(new RegExp(',', 'g'), '.');
+
+					if (!isNaN(val)) {
+						map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].roomSquare = Number(Number(val).toFixed(1));
+						map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].freezeSquare = true;
+						map.RSWEIndoor.RedrawRoom(map.RSWEIndoor.options.layers[this.toolbar.options.roomId].controlLayer);
+//enable close
+						return true;
+					} else {
+						input.value = Number(Number(map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].roomSquare).toFixed(1));
+						input.select();
+//disable close
+						return false;
+					}
+				}
+			}),
+			L.ToolbarAction.extendOptions({toolbarIcon: { html: 'Recalculate', className: 'leaflet-toolbar-noicon' },
+				isHidden: function (map) {
+					return !map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].hideSquare ? false : true;
+				},
+				callback: function (map) {
+					map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].freezeLabel = false;
+					map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].freezeSquare = false;
+					map.RSWEIndoor.RedrawRoom(map.RSWEIndoor.options.layers[this.toolbar.options.roomId].controlLayer);
+				}
+			}),
+			L.ToolbarAction.extendOptions({toolbarIcon: { html: 'Hide square', className: 'leaflet-toolbar-noicon' },
+				isHidden: function (map) {
+					return !map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].hideSquare ? false : true;
+				},
+				callback: function (map) {
+					map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].hideSquare = true;
+					map.RSWEIndoor.RedrawRoom(map.RSWEIndoor.options.layers[this.toolbar.options.roomId].controlLayer);
+				}
+			}),
+			L.ToolbarAction.extendOptions({toolbarIcon: { html: 'Show square', className: 'leaflet-toolbar-noicon' },
+				isHidden: function (map) {
+					return !map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].hideSquare ? true : false;
+				},
+				callback: function (map) {
+					map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].hideSquare = false;
+					map.RSWEIndoor.RedrawRoom(map.RSWEIndoor.options.layers[this.toolbar.options.roomId].controlLayer);
+				}
+			})
+		]
+
+	},
+	initialize: function (roomId, latlng, options) {
+		this.options.roomId = roomId;
+		L.setOptions(this, options);
+		L.ToolbarPopup.prototype.initialize.call(this, latlng, options);
+	}
+});
+
+
+L.WallToolbarPopup = L.ToolbarPopup.extend({
+	options: {
+		className: 'leaflet-draw-toolbar',
+		actions: [
+			L.ToolbarActionLabel.extendOptions({toolbarIcon: { html: '', className: 'leaflet-toolbar-noicon' },
+				label: 'Wall width (cm):'
+			}),
+
+			L.ToolbarActionInput.extendOptions({toolbarIcon: { html: 'Input', className: 'leaflet-draw-edit-edit' },
+				setInitValue: function (map) {
+
+					var _roomId = this.toolbar.options.roomId;
+					var _wallId = this.toolbar.options.wallId;
+
+					return parseInt(map.RSWEIndoor.options.roomWallsProps[_roomId][_wallId].wallWidth * 100, 10);
+				},
+				separator: true,
+				placeholder: 'Wall width',
+				callback: function (map, input) {
+//check decimal value
+					var _roomId = this.toolbar.options.roomId;
+					var _wallId = this.toolbar.options.wallId;
+					var _curWallWidth = map.RSWEIndoor.options.roomWallsProps[_roomId][_wallId].wallWidth;
+
+					var val = parseInt(input.value, 10);
+
+					if (!isNaN(val) && (val > 0) && (val < 101)) {
+						map.RSWEIndoor.options.roomWallsProps[_roomId][_wallId].wallWidth = val * 0.01;
+						map.RSWEIndoor.RedrawRoom(map.RSWEIndoor.options.layers[_roomId].controlLayer);
+//close popup
+						return true;
+					} else {
+						input.value = parseInt(_curWallWidth * 100, 10);
+					}
+				}
+			}),
+			L.ToolbarAction.extendOptions({toolbarIcon: { html: 'Hide wall', className: 'leaflet-toolbar-noicon' },
+				isHidden: function (map) {
+					var _roomId = this.toolbar.options.roomId;
+					var _wallId = this.toolbar.options.wallId;
+					var _wallType = map.RSWEIndoor.options.roomWallsProps[_roomId][_wallId].wallType;
+
+					return (_wallType === 'wall') ? false : true;
+
+				},
+				callback: function (map) {
+					map.RSWEIndoor.ChangeWallType(this.toolbar.options.roomId, this.toolbar.options.wallId);
+//					map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].freezeSquare = false;
+//					map.RSWEIndoor.RedrawRoom(map.RSWEIndoor.options.layers[this.toolbar.options.roomId].controlLayer);
+				}
+			}),
+			L.ToolbarAction.extendOptions({toolbarIcon: { html: 'Show wall', className: 'leaflet-toolbar-noicon' },
+				isHidden: function (map) {
+					var _roomId = this.toolbar.options.roomId;
+					var _wallId = this.toolbar.options.wallId;
+					var _wallType = map.RSWEIndoor.options.roomWallsProps[_roomId][_wallId].wallType;
+					return (_wallType === 'gap') ? false : true;
+//					return !map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].hideSquare ? false : true;
+				},
+				callback: function (map) {
+					map.RSWEIndoor.ChangeWallType(this.toolbar.options.roomId, this.toolbar.options.wallId);
+//					map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].freezeSquare = false;
+//					map.RSWEIndoor.RedrawRoom(map.RSWEIndoor.options.layers[this.toolbar.options.roomId].controlLayer);
+				}
+			}),
+			L.ToolbarAction.extendOptions({toolbarIcon: { html: 'Rotate', className: 'leaflet-toolbar-noicon' },
+				isHidden: function (map) {
+					var _roomId = this.toolbar.options.roomId;
+					var _wallId = this.toolbar.options.wallId;
+					var _wallType = map.RSWEIndoor.options.roomWallsProps[_roomId][_wallId].wallType;
+
+					return (_wallType === 'door1' ||
+						_wallType === 'door2' ||
+						_wallType === 'door3' ||
+						_wallType === 'door4') ? false : true;
+//					return !map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].hideSquare ? false : true;
+				},
+				callback: function (map) {
+					map.RSWEIndoor.ChangeWallType(this.toolbar.options.roomId, this.toolbar.options.wallId);
+//close popup
+					return true;
+//					map.RSWEIndoor.options.roomProps[this.toolbar.options.roomId].freezeSquare = false;
+//					map.RSWEIndoor.RedrawRoom(map.RSWEIndoor.options.layers[this.toolbar.options.roomId].controlLayer);
+				}
+			})
+		]
+	},
+	initialize: function (roomId, wallId, latlng, options) {
+		this.options.roomId = roomId;
+		this.options.wallId = wallId;
+		L.setOptions(this, options);
+		L.ToolbarPopup.prototype.initialize.call(this, latlng, options);
+	}
+});
+
 
 L.Control.Dialog = L.Control.extend({
     options: {
@@ -8930,12 +10136,6 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 					}
 				}, this);
 			}
-
-
-
-
-
-
 		}
 		tab = this._getTabContainer(1);
 		if (tab) {
@@ -9329,7 +10529,7 @@ L.Control.Dialog.Load = L.Control.Dialog.extend({
 
 				evt.target.thisDlg.InputName.value = '';
 
-				var isOK = evt.target.thisDlg._map.RSWEIndoor.loadData(evt.target.result);
+				var isOK = evt.target.thisDlg._map.RSWEIndoor.loadData(L.Util.base64Utf8Decode(evt.target.result));
 				if (isOK) {
 					evt.target.thisDlg.close();
 				} else {

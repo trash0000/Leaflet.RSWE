@@ -267,12 +267,6 @@ L.Control.Dialog.Options = L.Control.Dialog.extend({
 					}
 				}, this);
 			}
-
-
-
-
-
-
 		}
 		tab = this._getTabContainer(1);
 		if (tab) {

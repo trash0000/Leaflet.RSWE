@@ -6,6 +6,8 @@
 
 (function () {
         L.ScalableText = L.Path.extend({
+            includes: L.Mixin.Events,
+
             initialize: function (text, bindPoint, heightPoint, options) {
                 var attrCopy;
                 if (options && options.attributes) { attrCopy = {}; L.Util.extend(attrCopy, options.attributes); delete options.attributes; }
@@ -42,6 +44,7 @@
                 'font-family': 'Arial'
             },
             defaultOptions: {
+                clickable: true,
                 bgColor: 'black',
                 orientation: 'normal',
                 center: true,
@@ -170,6 +173,8 @@
                         this._gNode.appendChild(this._textNode);
                     }
                     this._container.appendChild(this._gNode);
+
+                    if ((L.Browser.svg || !L.Browser.vml) && this.options.clickable) { this._gNode.setAttribute('class', 'leaflet-clickable'); }
                 }
 
                 for (var attr in this.options.attributes) { this._textNode.setAttribute(attr, this.options.attributes[attr]); }
@@ -202,6 +207,10 @@
 
                     this._rectNode.setAttribute('transform', transform);
                     this._textNode.setAttribute('transform', transform);
+
+//                    if ((L.Browser.svg || !L.Browser.vml) && this.options.clickable) { this._gNode.setAttribute('class', 'leaflet-clickable'); }
+
+//                    L.DomUtil._setClass(this._rectNode, (className ? className + ' ' : '') + name);
 
                     point = null;
                 }

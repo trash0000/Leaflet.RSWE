@@ -47,7 +47,19 @@ L.Draw.Circle = L.Draw.SimpleShape.extend({
 	},
 
 	_onMouseMove: function (e) {
-		e.preventDefault();
+		e.originalEvent = (e.originalEvent) ? e.originalEvent : e;
+		if (e.originalEvent.touches) {
+			e.originalEvent.clientX = (e.originalEvent.clientX) ? e.originalEvent.clientX : e.originalEvent.touches[0].clientX;
+			e.originalEvent.clientY = (e.originalEvent.clientY) ? e.originalEvent.clientY : e.originalEvent.touches[0].clientY;
+			this.startTouch = e.originalEvent.touches[0];
+			this.lastTouch = e.originalEvent.touches[0];
+		}
+
+		e.containerPoint = (e.containerPoint) ? e.containerPoint : this._map.mouseEventToContainerPoint(e.originalEvent);
+		e.layerPoint = (e.layerPoint) ? e.layerPoint : this._map.containerPointToLayerPoint(e.containerPoint);
+		e.latlng = (e.latlng) ? e.latlng : this._map.layerPointToLatLng(e.layerPoint);
+
+		e.originalEvent.preventDefault();
 
 		var latlng = e.latlng,
 			showRadius = this.options.showRadius,
