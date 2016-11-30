@@ -153,6 +153,9 @@
 	background-position: -330px -2px;
 }
 
+.leaflet-draw-toolbar .leaflet-toolbar-noicon { background-image: url(); }
+.leaflet-retina .leaflet-draw-toolbar a.leaflet-toolbar-noicon { background-image: url(); }
+
 /* ================================================================== */
 /* Edit toolbar
 /* ================================================================== */
@@ -172,6 +175,7 @@
 .leaflet-draw-toolbar .leaflet-draw-edit-remove.leaflet-disabled {
 	background-position: -242px -2px;
 }
+
 
 /* ================================================================== */
 /* Drawing styles
@@ -653,3 +657,216 @@ position: absolute;
 .leaflet-top-menu-spacer{float:left;padding-left:5px;}
 
 .leaflet-marker-icon {box-sizing: initial; cursor: crosshair;}
+
+
+
+
+
+
+
+
+/* Variables and Mixins */
+/* Generic L.Toolbar */
+.leaflet-toolbar-0 {
+  list-style: none;
+  padding-left: 0;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+
+/* width:100px;*/
+/*    display: none;*/
+/*	box-shadow: 0 1px 7px rgba(0,0,0,0.4);
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+    padding: 4px 0;
+    background-color: #fff;
+    cursor: default;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	user-select: none;
+
+*/
+}
+.leaflet-toolbar-0 > li {
+  position: relative;
+width:150px;
+}
+.leaflet-toolbar-0 > li > .leaflet-toolbar-icon {
+  display: block;
+  width: 150px;
+  height: 26px;
+  line-height: 26px;
+  margin-right: 0;
+  padding-right: 0;
+  border-right: 0;
+  text-align: center;
+  text-decoration: none;
+  background-color: #ffffff;
+}
+
+
+.leaflet-toolbar-0 > li > .leaflet-toolbar-icon > div{
+  position: absolute;
+    background: #FFFFFF;
+    width: 124px;
+    min-width:26px;
+    height: 26px;
+    line-height: 26px;
+    left: 26px;
+    white-space: nowrap;
+    text-align:left;
+}
+
+.leaflet-toolbar-0 > li > .leaflet-toolbar-icon.leaflet-toolbar-icon-input {
+  float:left;
+  width:26px;
+}
+
+.leaflet-toolbar-div-label{
+    box-sizing: border-box;
+  position: absolute;
+  background-color:#FFFFFF;
+  height:26px;
+  left: 26px;
+  width:26px;
+  font-size: larger;
+  font-weight: bold;
+}
+
+
+.leaflet-toolbar-div-input > input{
+    box-sizing: border-box;
+  width:90%;
+  top: 1px;
+  bottom:1px;
+  height:23px;
+/*  margin-top:2px;*/
+}
+
+.leaflet-toolbar-div-input{
+    box-sizing: border-box;
+  position: absolute;
+  background-color:#FFFFFF;
+  height:26px;
+left: 26px;
+
+  width:124px;
+}
+
+.leaflet-toolbar-0 > li > .leaflet-toolbar-icon:hover {
+  background-color: #f4f4f4;
+}
+
+/*.leaflet-toolbar-0 > li > .leaflet-toolbar-noicon,*/
+.leaflet-toolbar-0 > li > .leaflet-toolbar-icon.leaflet-toolbar-noicon:hover {
+/*  background-image: url();*/
+  background-color: #fff;
+}
+
+.leaflet-toolbar-0 .leaflet-toolbar-1 {
+  display: none;
+  list-style: none;
+}
+.leaflet-toolbar-tip-container {
+display:none;
+  margin: 0 auto;
+  height: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.leaflet-toolbar-tip {
+  width: 12px;
+  height: 12px;
+  margin: -6px auto 0;
+  background-color: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+  -webkit-transform: rotate(45deg);
+      -ms-transform: rotate(45deg);
+          transform: rotate(45deg);
+}
+/* L.Toolbar.Control */
+.leaflet-control-toolbar {
+  /* Secondary Toolbar */
+}
+.leaflet-control-toolbar > li > .leaflet-toolbar-icon {
+  border-bottom: 1px solid #ccc;
+}
+/*
+.leaflet-control-toolbar > li:first-child > .leaflet-toolbar-icon {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+.leaflet-control-toolbar > li:last-child > .leaflet-toolbar-icon {
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  border-bottom-width: 0;
+}
+*/
+.leaflet-control-toolbar .leaflet-toolbar-1 {
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  left: 26px;
+  /* leaflet-draw-toolbar.left + leaflet-draw-toolbar.width */
+  top: 0;
+  white-space: nowrap;
+  height: 26px;
+}
+.leaflet-control-toolbar .leaflet-toolbar-1 > li {
+  display: inline-block;
+}
+.leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon {
+  display: block;
+  background-color: #919187;
+  border-left: 1px solid #aaa;
+  color: #fff;
+  font: 11px/19px "Helvetica Neue", Arial, Helvetica, sans-serif;
+  line-height: 26px;
+  text-decoration: none;
+  padding-left: 10px;
+  padding-right: 10px;
+  height: 26px;
+}
+.leaflet-control-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon:hover {
+  background-color: #a0a098;
+}
+/* L.Toolbar.Popup */
+.leaflet-popup-toolbar {
+  position: relative;
+}
+.leaflet-popup-toolbar > li {
+  float: left;
+ clear:both;
+}
+/*
+.leaflet-popup-toolbar > li:first-child > .leaflet-toolbar-icon {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+.leaflet-popup-toolbar > li:last-child > .leaflet-toolbar-icon {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  border-bottom-width: 0;
+}
+*/
+.leaflet-popup-toolbar .leaflet-toolbar-1 {
+  position: absolute;
+  top: 26px;
+  left: 0;
+  padding-left: 0;
+}
+.leaflet-popup-toolbar .leaflet-toolbar-1 > li > .leaflet-toolbar-icon {
+  position: relative;
+  float: left;
+  width: 26px;
+  height: 26px;
+}
+
+.leaflet-toolbar-icon-separator,
+.leaflet-toolbar-icon-separator > div
+div.leaflet-toolbar-icon-separator
+ {
+    box-sizing: border-box;
+    border-bottom: 1px solid #000;
+    padding: 1px 0;
+/*    margin-bottom: 1px;*/
+}
